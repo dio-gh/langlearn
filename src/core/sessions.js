@@ -1,12 +1,17 @@
+const systemClock = Object.freeze({
+  now: () => performance.now(),
+});
+
 export class TypingSession {
-  constructor(target) {
+  constructor(target, clock = systemClock) {
     this.target = target;
+    this.clock = clock;
     this.input = "";
-    this.startedAt = 0;
-    this.finishedAt = 0;
+    this.startedAt = null;
+    this.finishedAt = null;
     this.keystrokes = 0;
     this.mistakes = 0;
-    this.createdAt = performance.now();
+    this.createdAt = clock.now();
     this.resets = 0;
   }
 
@@ -14,7 +19,7 @@ export class TypingSession {
     if (!value) return;
     let offset = 0;
     for (const character of value) {
-      if (!this.startedAt) this.startedAt = performance.now();
+      if (this.startedAt === null) this.startedAt = this.clock.now();
       if (character !== this.target[this.input.length + offset]) this.mistakes += 1;
       this.keystrokes += 1;
       offset += 1;
@@ -23,7 +28,7 @@ export class TypingSession {
 
   update(value) {
     this.input = value.slice(0, this.target.length);
-    if (this.complete && !this.finishedAt) this.finishedAt = performance.now();
+    if (this.complete && this.finishedAt === null) this.finishedAt = this.clock.now();
   }
 
   get complete() {
@@ -31,19 +36,21 @@ export class TypingSession {
   }
 
   get stats() {
-    const end = this.finishedAt || performance.now();
-    const minutes = this.startedAt ? Math.max((end - this.startedAt) / 60000, 1 / 600) : 0;
+    const end = this.finishedAt ?? this.clock.now();
+    const minutes = this.startedAt !== null
+      ? Math.max((end - this.startedAt) / 60000, 1 / 600)
+      : 0;
     const correct = Math.max(0, this.keystrokes - this.mistakes);
     return {
       wpm: minutes ? Math.round(correct / 5 / minutes) : 0,
-      accuracy: this.keystrokes ? Math.round(correct / this.keystrokes * 100) : 100,
+      accuracy: this.keystrokes ? Math.round(correct / this.keystrokes * 100) : null,
     };
   }
 
   get evidence() {
     const stats = this.stats;
-    const durationMs = this.startedAt
-      ? (this.finishedAt || performance.now()) - this.startedAt
+    const durationMs = this.startedAt !== null
+      ? (this.finishedAt ?? this.clock.now()) - this.startedAt
       : 0;
     return {
       firstTry: this.mistakes === 0,
@@ -55,18 +62,19 @@ export class TypingSession {
   }
 
   get elapsedMs() {
-    return (this.finishedAt || performance.now()) - this.createdAt;
+    return (this.finishedAt ?? this.clock.now()) - this.createdAt;
   }
 }
 
 export class ChoiceSession {
-  constructor(answer) {
+  constructor(answer, clock = systemClock) {
     this.answer = answer;
+    this.clock = clock;
     this.selected = null;
     this.attempts = 0;
     this.complete = false;
-    this.finishedAt = 0;
-    this.createdAt = performance.now();
+    this.finishedAt = null;
+    this.createdAt = clock.now();
     this.selections = [];
   }
 
@@ -75,28 +83,37 @@ export class ChoiceSession {
     this.attempts += 1;
     this.selections.push(value);
     this.complete = value === this.answer;
-    if (this.complete) this.finishedAt = performance.now();
+    if (this.complete) this.finishedAt = this.clock.now();
     return this.complete;
   }
 
+  get stats() {
+    const correct = this.complete ? 1 : 0;
+    return {
+      attempts: this.attempts,
+      accuracy: this.attempts ? Math.round(correct / this.attempts * 100) : null,
+    };
+  }
+
   get evidence() {
-    const durationMs = (this.finishedAt || performance.now()) - this.createdAt;
+    const durationMs = (this.finishedAt ?? this.clock.now()) - this.createdAt;
+    const stats = this.stats;
     return {
       firstTry: this.attempts === 1,
       mistakes: Math.max(0, this.attempts - 1),
-      accuracy: this.attempts ? Math.round(100 / this.attempts) : 0,
+      accuracy: stats.accuracy ?? 0,
       durationMs,
       impulsive: durationMs < 350,
     };
   }
 
   get elapsedMs() {
-    return (this.finishedAt || performance.now()) - this.createdAt;
+    return (this.finishedAt ?? this.clock.now()) - this.createdAt;
   }
 }
 
-export function createSession(exercise) {
-  if (exercise.kind === "typing") return new TypingSession(exercise.code);
-  if (exercise.kind === "choice") return new ChoiceSession(exercise.answer);
+export function createSession(exercise, clock = systemClock) {
+  if (exercise.kind === "typing") return new TypingSession(exercise.code, clock);
+  if (exercise.kind === "choice") return new ChoiceSession(exercise.answer, clock);
   throw new TypeError(`Unknown exercise kind: ${exercise.kind}`);
 }

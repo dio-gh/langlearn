@@ -62,6 +62,14 @@ export class Course {
     return this.status(stageIndex).ratio;
   }
 
+  get trackProgress() {
+    const total = this.track.stages.reduce(
+      (sum, _stage, index) => sum + this.mastery(index),
+      0,
+    );
+    return total / this.track.stages.length;
+  }
+
   isUnlocked(stageIndex) {
     if (stageIndex === 0) return true;
     return this.status(stageIndex - 1).mastered;

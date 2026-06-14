@@ -3,6 +3,8 @@ const fallbackDuration = Object.freeze({
   choice: 18_000,
 });
 
+export const idleAfterMs = 60_000;
+
 function deficit(target, actual) {
   return Math.max(0, Math.ceil(target - actual));
 }
@@ -37,9 +39,52 @@ export function formatDuration(milliseconds) {
 }
 
 export class PracticeClock {
-  constructor(now = () => performance.now()) {
-    this.now = now;
-    this.startedAt = now();
+  constructor(source = () => performance.now(), idleThreshold = idleAfterMs) {
+    this.source = source;
+    this.idleThreshold = idleThreshold;
+    this.excludedMs = 0;
+    this.hiddenAt = null;
+    this.lastActivityAt = source();
+    this.startedAt = this.now();
+  }
+
+  idleStart(raw = this.source()) {
+    const timeoutAt = this.lastActivityAt + this.idleThreshold;
+    const timeoutStart = raw >= timeoutAt ? timeoutAt : null;
+    if (this.hiddenAt === null) return timeoutStart;
+    if (timeoutStart === null) return this.hiddenAt;
+    return Math.min(timeoutStart, this.hiddenAt);
+  }
+
+  now() {
+    const raw = this.source();
+    const idleStart = this.idleStart(raw);
+    return raw - this.excludedMs - (idleStart === null ? 0 : raw - idleStart);
+  }
+
+  get idle() {
+    return this.idleStart() !== null;
+  }
+
+  activity() {
+    if (this.hiddenAt !== null) return;
+    const raw = this.source();
+    const idleStart = this.idleStart(raw);
+    if (idleStart !== null) this.excludedMs += raw - idleStart;
+    this.lastActivityAt = raw;
+  }
+
+  setHidden(hidden) {
+    const raw = this.source();
+    if (hidden) {
+      this.hiddenAt ??= raw;
+      return;
+    }
+    if (this.hiddenAt === null) return;
+    const idleStart = this.idleStart(raw);
+    this.excludedMs += raw - idleStart;
+    this.hiddenAt = null;
+    this.lastActivityAt = raw;
   }
 
   snapshot(status, exercise, session) {
@@ -54,6 +99,7 @@ export class PracticeClock {
       sessionMs: this.now() - this.startedAt,
       remainingMs: probes * average,
       remainingProbes: probes,
+      idle: this.idle,
     };
   }
 }

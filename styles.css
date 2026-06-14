@@ -471,6 +471,11 @@ textarea:focus-visible,
   font-weight: 400;
 }
 
+.practice.idle #exercise-time,
+.practice.idle #session-time {
+  color: var(--warning);
+}
+
 .metric small {
   color: var(--muted);
   font-size: 9px;

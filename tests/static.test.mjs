@@ -27,6 +27,26 @@ test("font sources are local and present", () => {
   }
 });
 
+test("counter placeholders do not claim unearned accuracy", () => {
+  assert.match(html, /id="accuracy">--<\/b>/);
+  const view = readFileSync(resolve(root, "src/view.js"), "utf8");
+  assert.match(view, /course\.trackProgress/);
+  assert.match(view, /session\.stats/);
+  assert.doesNotMatch(view, /Math\.round\(100\s*\/\s*session\.attempts\)/);
+});
+
+test("all live duration metrics share idle-aware active time", () => {
+  const app = readFileSync(resolve(root, "src/app.js"), "utf8");
+  const sessions = readFileSync(resolve(root, "src/core/sessions.js"), "utf8");
+  const timing = readFileSync(resolve(root, "src/core/timing.js"), "utf8");
+  assert.match(app, /createSession\(this\.exercise,\s*this\.clock\)/);
+  assert.match(app, /visibilitychange/);
+  assert.match(app, /this\.clock\.activity\(\)/);
+  assert.match(sessions, /this\.clock\.now\(\)/);
+  assert.match(timing, /idleThreshold/);
+  assert.match(timing, /idle:\s*this\.idle/);
+});
+
 test("runtime code does not make network requests", () => {
   const files = [
     "src/app.js",

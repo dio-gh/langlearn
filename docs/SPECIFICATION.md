@@ -99,12 +99,28 @@ The interface displays:
 - elapsed time for the current exercise
 - elapsed time for the current browser session
 - estimated time remaining for the current stage
+- attempts or typing speed for the current exercise
+- current-exercise accuracy after observable input
+- a clean-evidence streak
+- aggregate progress across every stage in the active track
 
 The remaining estimate multiplies the learner's observed average completion
 duration for that stage by the largest unresolved mastery requirement. Before
 enough samples exist, conservative per-probe defaults are used. It is an
 adaptive estimate, not a deadline or guaranteed completion time; mistakes and
 newly exposed evidence deficits can increase it.
+
+Visible timers pause after 60 seconds without keyboard, pointer, wheel, or
+window-focus activity. Hiding the page pauses them immediately. The same
+active-time source is used for WPM and stored completion-duration samples, so
+idle time cannot inflate speed calculations or future stage estimates. The
+current exercise and learner state remain intact while paused.
+
+Accuracy is undefined before the learner acts and is displayed as `--`. For
+choice probes it is zero after wrong-only selections and becomes the proportion
+of correct selections after completion. The percentage beside the course bar
+is the mean evidence ratio across all stages represented by that bar; the
+current stage's separate evidence ratio remains encoded by its segment fill.
 
 ## Language Contract
 

@@ -21,6 +21,7 @@ class App {
     this.theme = new ThemeController(this.store);
     this.theme.bind(this.view.themeSelect);
     this.clock = new PracticeClock();
+    this.clock.setHidden(document.hidden);
     this.exercise = null;
     this.session = null;
     this.advanceTimer = 0;
@@ -49,6 +50,18 @@ class App {
   }
 
   bind() {
+    for (const eventName of ["keydown", "pointerdown", "wheel"]) {
+      document.addEventListener(eventName, () => this.clock.activity(), {
+        capture: true,
+        passive: true,
+      });
+    }
+    window.addEventListener("focus", () => this.clock.activity());
+    document.addEventListener("visibilitychange", () => {
+      this.clock.setHidden(document.hidden);
+      this.renderLive();
+    });
+
     this.view.capture.addEventListener("beforeinput", (event) => {
       if (event.inputType === "insertText") this.session.recordInsertion(event.data);
       if (event.inputType === "insertLineBreak") this.session.recordInsertion("\n");
@@ -136,7 +149,7 @@ class App {
   }
 
   abandonIfStarted() {
-    if (this.session && (this.session.startedAt || this.session.attempts > 0)) {
+    if (this.session && (this.session.startedAt !== null || this.session.attempts > 0)) {
       this.course.abandon(this.exercise);
     }
   }
@@ -144,7 +157,7 @@ class App {
   load() {
     window.clearTimeout(this.advanceTimer);
     this.exercise = this.course.exercise;
-    this.session = createSession(this.exercise);
+    this.session = createSession(this.exercise, this.clock);
     this.view.capture.value = "";
     this.render();
     if (this.exercise.kind === "typing") this.view.focus();
@@ -173,10 +186,12 @@ class App {
   }
 
   renderLive() {
-    if (this.exercise?.kind === "typing" && this.session.startedAt && !this.session.complete) {
-      const stats = this.session.stats;
-      this.view.speed.textContent = stats.wpm;
-      this.view.accuracy.textContent = stats.accuracy;
+    if (
+      this.exercise?.kind === "typing"
+      && this.session.startedAt !== null
+      && !this.session.complete
+    ) {
+      this.view.renderPerformance(this.exercise, this.session);
     }
     if (this.exercise && this.session) this.view.renderTiming(this.timing());
   }

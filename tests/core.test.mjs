@@ -239,6 +239,7 @@ test("course unlocks only after diverse strong retained evidence", () => {
   const course = new Course(language, factory, store, learner);
 
   assert.equal(course.isUnlocked(1), false);
+  assert.equal(course.trackProgress, 0);
   for (let index = 0; index < 8; index += 1) {
     const exercise = {
       id: `a:${index}`,
@@ -250,20 +251,27 @@ test("course unlocks only after diverse strong retained evidence", () => {
   }
   assert.equal(course.isUnlocked(1), true);
   assert.equal(course.position.frontier, 1);
+  assert.equal(course.status(1).ratio, 0);
+  assert.equal(course.trackProgress, 0.5);
 });
 
 test("typing and choice sessions track completion", () => {
   const typing = new TypingSession("go");
+  assert.equal(typing.stats.accuracy, null);
   typing.recordInsertion("go");
   typing.update("go");
   assert.equal(typing.complete, true);
   assert.equal(typing.stats.accuracy, 100);
 
   const choice = new ChoiceSession("right");
+  assert.deepEqual(choice.stats, { attempts: 0, accuracy: null });
   assert.equal(choice.choose("wrong"), false);
+  assert.deepEqual(choice.stats, { attempts: 1, accuracy: 0 });
   assert.equal(choice.choose("right"), true);
+  assert.deepEqual(choice.stats, { attempts: 2, accuracy: 50 });
   assert.equal(choice.attempts, 2);
   assert.equal(choice.evidence.firstTry, false);
+  assert.equal(choice.evidence.accuracy, 50);
 });
 
 test("v2 completion counters migrate as exposure, not mastery", () => {
@@ -395,4 +403,37 @@ test("timing model estimates remaining probe time", () => {
   assert.equal(snapshot.sessionMs, 5_000);
   assert.equal(snapshot.remainingMs, 40_000);
   assert.equal(formatDuration(snapshot.remainingMs), "0:40");
+});
+
+test("practice time pauses after inactivity and while hidden", () => {
+  let raw = 0;
+  const clock = new PracticeClock(() => raw, 1_000);
+  const choice = new ChoiceSession("right", clock);
+
+  raw = 600;
+  assert.equal(choice.elapsedMs, 600);
+  assert.equal(clock.idle, false);
+
+  raw = 2_000;
+  assert.equal(choice.elapsedMs, 1_000);
+  assert.equal(clock.idle, true);
+
+  raw = 5_000;
+  assert.equal(choice.elapsedMs, 1_000);
+  clock.activity();
+  assert.equal(clock.idle, false);
+
+  raw = 5_400;
+  choice.choose("right");
+  assert.equal(choice.evidence.durationMs, 1_400);
+
+  clock.setHidden(true);
+  raw = 9_000;
+  assert.equal(clock.now(), 1_400);
+  assert.equal(clock.idle, true);
+
+  clock.setHidden(false);
+  raw = 9_500;
+  assert.equal(clock.now(), 1_900);
+  assert.equal(clock.idle, false);
 });

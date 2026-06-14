@@ -7,6 +7,10 @@ function element(tag, className, text) {
   return node;
 }
 
+function formatAccuracy(value) {
+  return value === null ? "--" : String(value);
+}
+
 export class View {
   constructor() {
     this.practice = document.querySelector(".practice");
@@ -23,6 +27,7 @@ export class View {
     this.streak = document.querySelector("#streak");
     this.exerciseTime = document.querySelector("#exercise-time");
     this.sessionTime = document.querySelector("#session-time");
+    this.sessionTimeLabel = document.querySelector("#session-time-label");
     this.remainingTime = document.querySelector("#remaining-time");
     this.progress = document.querySelector("#progress");
     this.modeSwitch = document.querySelector("#mode-switch");
@@ -67,11 +72,17 @@ export class View {
     const stageIndex = course.position.stage;
     const status = course.status(stageIndex);
     this.practice.dataset.kind = exercise.kind;
-    this.practice.classList.toggle("active", Boolean(session.startedAt || session.selected));
+    this.practice.classList.toggle(
+      "active",
+      session.startedAt !== null || session.selected !== null,
+    );
     this.practice.classList.toggle("complete", session.complete);
     const reviewing = course.position.stage < course.position.frontier;
     this.glyph.textContent = `${reviewing ? "Review " : ""}${course.stage.glyph}`;
-    this.counter.textContent = `${Math.round(status.ratio * 100)}%`;
+    const trackPercent = Math.round(course.trackProgress * 100);
+    const stagePercent = Math.round(status.ratio * 100);
+    this.counter.textContent = `${trackPercent}%`;
+    this.counter.title = `${course.track.label} progress: ${trackPercent}%. Current stage evidence: ${stagePercent}%.`;
     this.rule.textContent = formatStage(course.stage);
     this.streak.textContent = course.store.state.streak;
     this.renderModes(course);
@@ -84,6 +95,7 @@ export class View {
     } else {
       this.renderChoice(exercise, session);
     }
+    this.renderPerformance(exercise, session);
   }
 
   renderModes(course) {
@@ -100,12 +112,23 @@ export class View {
   }
 
   renderProgress(course) {
+    const trackPercent = Math.round(course.trackProgress * 100);
+    this.progress.setAttribute(
+      "aria-label",
+      `${course.track.label} progress: ${trackPercent}%`,
+    );
     this.progress.replaceChildren(...course.track.stages.map((stage, index) => {
       const segment = element("i");
       const amount = course.mastery(index);
-      segment.style.setProperty("--fill", `${Math.round(amount * 100)}%`);
+      const percent = Math.round(amount * 100);
+      segment.style.setProperty("--fill", `${percent}%`);
       segment.classList.toggle("now", index === course.position.stage);
       segment.classList.toggle("locked", !course.isUnlocked(index));
+      segment.setAttribute("role", "progressbar");
+      segment.setAttribute("aria-label", `${stage.id}: ${percent}% evidence`);
+      segment.setAttribute("aria-valuemin", "0");
+      segment.setAttribute("aria-valuemax", "100");
+      segment.setAttribute("aria-valuenow", String(percent));
       return segment;
     }));
   }
@@ -124,10 +147,6 @@ export class View {
     this.code.replaceChildren(fragment);
     this.capture.hidden = false;
     this.answers.hidden = true;
-    const stats = session.stats;
-    this.speed.textContent = stats.wpm;
-    this.speedLabel.textContent = "wpm";
-    this.accuracy.textContent = stats.accuracy;
   }
 
   renderChoice(exercise, session) {
@@ -152,14 +171,28 @@ export class View {
       if (session.complete && option === exercise.answer) button.classList.add("correct");
       return button;
     }));
-    this.speed.textContent = session.attempts;
-    this.speedLabel.textContent = "tries";
-    this.accuracy.textContent = session.attempts ? Math.round(100 / session.attempts) : 100;
+  }
+
+  renderPerformance(exercise, session) {
+    const stats = session.stats;
+    if (exercise.kind === "typing") {
+      this.speed.textContent = stats.wpm;
+      this.speedLabel.textContent = "wpm";
+    } else {
+      this.speed.textContent = stats.attempts;
+      this.speedLabel.textContent = "tries";
+    }
+    this.accuracy.textContent = formatAccuracy(stats.accuracy);
   }
 
   renderTiming(timing) {
+    this.practice.classList.toggle("idle", timing.idle);
     this.exerciseTime.textContent = formatDuration(timing.exerciseMs);
     this.sessionTime.textContent = formatDuration(timing.sessionMs);
+    this.sessionTimeLabel.textContent = timing.idle ? "paused" : "session";
+    const timerTitle = timing.idle ? "Paused after inactivity" : "";
+    this.exerciseTime.title = timerTitle;
+    this.sessionTime.title = timerTitle;
     this.remainingTime.textContent = timing.remainingProbes
       ? `~${formatDuration(timing.remainingMs)}`
       : "done";
