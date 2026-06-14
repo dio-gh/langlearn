@@ -55,6 +55,8 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Grammar extraction failed." }
     & $Node "tools\go\extract-stdlib.mjs"
     if ($LASTEXITCODE -ne 0) { throw "Standard-library extraction failed." }
+    & $Node "tools\go\extract-names.mjs"
+    if ($LASTEXITCODE -ne 0) { throw "Identifier-corpus extraction failed." }
     & $Node "tools\go\build-corpus.mjs"
     if ($LASTEXITCODE -ne 0) { throw "Corpus validation failed." }
     $Tests = Get-ChildItem -LiteralPath (Join-Path $Root "tests") -Filter "*.test.mjs" |

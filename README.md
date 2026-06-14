@@ -31,6 +31,9 @@ and ships its fonts locally.
 
 - Syntax probes expand a named production in the extracted Go 1.26 EBNF. Only
   seeds accepted by the Go 1.26.4 parser are published.
+- Generated identifiers are selected by syntactic role from names mined from
+  human-facing Go 1.26.4 standard-library source. This keeps incidental naming
+  noise familiar without storing authored exercises.
 - Behavior probes synthesize parameterized programs. Every published answer is
   compared with output from the real Go 1.26.4 runtime.
 - Library probes use signatures extracted from the Go 1.26.4 standard library.
@@ -63,8 +66,9 @@ SHA-256 checksum, and uses it as the parser, runtime, and compiler oracle.
   persistence contracts
 - `src/languages/catalog.js`: installed course registry
 - `src/languages/go/`: Go descriptor, curriculum, synthesizers, migrations,
-  and generated data
-- `tools/go/`: pinned Go extraction and compiler-validation pipeline
+  generated grammar, role-aware names, and validated seeds
+- `tools/go/`: pinned Go grammar, API, and identifier extraction plus
+  compiler-validation pipeline
 - `tests/architecture.test.mjs`: enforces the generic-core boundary
 - `tests/generated-corpus.test.mjs`: replays the complete published Go corpus
 - `tests/accessibility.test.mjs`: checks theme contrast and interaction affordances

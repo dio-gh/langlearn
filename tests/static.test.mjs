@@ -67,6 +67,7 @@ test("runtime code does not make network requests", () => {
     "src/languages/go/grammar-expander.js",
     "src/languages/go/migration.js",
     "src/languages/go/synthesizers.js",
+    "src/languages/go/data/names.generated.js",
   ];
   const runtime = files.map((file) => readFileSync(resolve(root, file), "utf8")).join("\n");
 

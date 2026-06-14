@@ -72,6 +72,23 @@ into load-bearing architecture.
 - added architecture tests that reject Go coupling in the generic core
 - added token-level WCAG contrast tests and accessibility documentation
 
+## Iteration 5
+
+### Tick: Familiar Identifier Vocabulary
+
+- replaced invented syllable chains with recognizable code vocabulary
+- preserved deterministic generation and per-exercise name uniqueness
+- sampled names according to package, variable, function, method, type, and
+  field roles
+
+### Tock: Reproducible Naming Corpus
+
+- extracted names from the pinned Go 1.26.4 standard-library AST
+- filtered generated, internal, runtime, test, placeholder, and opaque names
+- ranked candidates by use across distinct packages
+- bound the generated vocabulary to the validation manifest
+- added corpus quality and grammar-role regression tests
+
 ## Future Ticks
 
 - a second language course to exercise the descriptor contract

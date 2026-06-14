@@ -1,4 +1,5 @@
 import { Random } from "../../core/random.js";
+import { identifierVocabulary } from "./data/names.generated.js";
 
 const reserved = new Set([
   "break", "default", "func", "interface", "select",
@@ -8,24 +9,48 @@ const reserved = new Set([
   "continue", "for", "import", "return", "var",
 ]);
 
-const syllables = [
-  "ba", "be", "bi", "bo", "ca", "ce", "da", "de",
-  "fi", "fo", "ga", "go", "ka", "ke", "la", "le",
-  "mi", "mo", "na", "ne", "pa", "pe", "ra", "re",
-  "si", "so", "ta", "te", "vi", "vo", "za", "ze",
-];
+const identifierRoles = Object.freeze({
+  PackageName: "packages",
+  FunctionName: "functions",
+  MethodName: "methods",
+  FieldName: "fields",
+  TypeName: "types",
+  TypeSpec: "types",
+  TypeDef: "types",
+  AliasDecl: "types",
+  ReceiverType: "types",
+  BaseType: "types",
+  TypeParamDecl: "types",
+});
+
+function identifierRole(state) {
+  for (let index = state.stack.length - 1; index >= 0; index -= 1) {
+    const role = identifierRoles[state.stack[index]];
+    if (role) return role;
+  }
+  return identifierRoles[state.owner] ?? "variables";
+}
 
 function generatedIdentifier(random, state) {
-  for (;;) {
-    const parts = random.integer(1, 2);
-    let value = "";
-    for (let index = 0; index < parts; index += 1) value += random.pick(syllables);
-    if (random.chance(0.22)) value += random.integer(0, 9);
-    if (!reserved.has(value) && !state.identifiers.has(value)) {
+  const role = identifierRole(state);
+  const fallbacks = [
+    identifierVocabulary[role],
+    identifierVocabulary.variables,
+    identifierVocabulary.fields,
+    identifierVocabulary.functions,
+    identifierVocabulary.types,
+  ];
+  for (const pool of fallbacks) {
+    const available = pool.filter(
+      (value) => !reserved.has(value) && !state.identifiers.has(value),
+    );
+    if (available.length) {
+      const value = random.pick(available);
       state.identifiers.add(value);
       return value;
     }
   }
+  throw new RangeError("Identifier vocabulary exhausted");
 }
 
 function digits(random, radix, min = 1, max = 4) {

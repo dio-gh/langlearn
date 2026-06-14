@@ -11,7 +11,10 @@ deployable site.
   - Spec source: `doc/go_spec.html`
   - Parser cross-checks: `src/go/parser/parser.go`,
     `src/cmd/compile/internal/syntax/parser.go`
-  - License notice for generated grammar data: `assets/licenses/go.txt`
+  - Identifier corpus source: human-facing packages under `src/`, classified
+    by Go AST declaration role
+  - License notice for generated grammar and identifier data:
+    `assets/licenses/go.txt`
 
 - Go 1.26.4 Windows AMD64 toolchain
   - Download: https://go.dev/dl/go1.26.4.windows-amd64.zip

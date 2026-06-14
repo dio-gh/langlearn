@@ -76,6 +76,19 @@ type-check. For Go, signatures come from `go/types`, not an authored card set.
 Retention is a scheduling mode. Mastered material becomes due after later work,
 and contradictory evidence immediately reopens a stage.
 
+## Pedagogical Naming
+
+Generated syntax uses identifiers extracted from real Go 1.26.4
+standard-library source. Names are separated into package, variable, function,
+method, type, and field pools, then selected according to the active grammar
+role. This reduces the extraneous cognitive load of decoding invented words
+while preserving generated variety.
+
+The naming corpus is data, not a drill bank: source, answers, options, and
+diagnostics remain reconstructed from numeric seeds. A realistic identifier is
+not presented as evidence of a meaningful domain model; correctness guarantees
+remain syntactic unless a probe is separately compiler- or runtime-validated.
+
 ## Evidence And Scheduling
 
 Evidence is namespaced by language, track, and stage:
@@ -150,6 +163,8 @@ manifests.
 - Go syntax acceptance uses the Go 1.26.4 parser.
 - Go behavior answers use actual Go 1.26.4 execution.
 - Go library answers use Go 1.26.4 type checking.
+- Go syntax identifiers use a role-aware corpus extracted from the pinned Go
+  1.26.4 standard library.
 - The manifest stores numeric seeds and hashes every generation input.
 - Tests regenerate and replay the complete published corpus.
 
