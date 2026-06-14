@@ -1,0 +1,32 @@
+{
+  "go": {
+    "url": "https://github.com/golang/go.git",
+    "revision": "a9ce111d580581fb925ae88f125c69b7d93504ea",
+    "tag": "go1.26.4",
+    "paths": [
+      "doc",
+      "src/go/parser",
+      "src/go/scanner",
+      "src/go/token",
+      "src/cmd/compile/internal/syntax"
+    ]
+  },
+  "tree-sitter-go": {
+    "url": "https://github.com/tree-sitter/tree-sitter-go.git",
+    "revision": "2346a3ab1bb3857b48b29d779a1ef9799a248cd7"
+  },
+  "grammars-v4": {
+    "url": "https://github.com/antlr/grammars-v4.git",
+    "revision": "99edd048f64db545b20da57a3dda0ab279b0fd6e",
+    "paths": [
+      "golang"
+    ]
+  },
+  "image": {
+    "url": "https://github.com/golang/image.git",
+    "revision": "3fd0b0746d13f339f4559383bb970a19ff842764",
+    "paths": [
+      "font/gofont/ttfs"
+    ]
+  }
+}

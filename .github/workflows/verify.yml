@@ -1,0 +1,31 @@
+name: verify
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  corpus:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.26.4"
+          cache: false
+      - name: Locate Go oracle
+        shell: bash
+        run: |
+          echo "GO126=$(command -v go)" >> "$GITHUB_ENV"
+          echo "GOROOT126=$(go env GOROOT)" >> "$GITHUB_ENV"
+      - name: Replay generated corpus and release checks
+        run: node --test tests/*.test.mjs
