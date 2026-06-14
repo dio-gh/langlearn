@@ -67,7 +67,7 @@ const library = [
 }));
 
 export const tracks = [
-  { id: "syntax", glyph: "{}", stages: syntax },
-  { id: "meaning", glyph: "=>", stages: meaning },
-  { id: "library", glyph: ".", stages: library },
+  { id: "syntax", label: "Syntax", description: "Recognize and construct valid forms", stages: syntax },
+  { id: "meaning", label: "Behavior", description: "Predict what generated code does", stages: meaning },
+  { id: "library", label: "Library", description: "Complete standard-library calls", stages: library },
 ];

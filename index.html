@@ -3,31 +3,32 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0d0f0e">
-  <title>go{} dojo</title>
+  <meta name="theme-color" content="#f4f2ec">
+  <title>langlearn</title>
+  <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
   <main class="shell">
     <header class="topbar">
       <div class="brand">
-        <button class="mark" id="map-button" type="button" aria-label="Open course map">
-          <span>go</span><span aria-hidden="true">{}</span>
-        </button>
+        <button class="brand-button" id="map-button" type="button" aria-label="Open course map">langlearn</button>
         <span
-          class="language-version"
-          id="language-version"
-          title="Generated and validated with Go 1.26.4"
-        >go1.26.4</span>
+          class="course-badge"
+          id="course-badge"
+          title="Go course validated with go1.26.4"
+        >Go 1.26.4</span>
       </div>
-      <nav class="track-switch" id="track-switch" aria-label="Practice tracks"></nav>
+      <nav class="mode-switch" id="mode-switch" aria-label="Practice modes"></nav>
       <div class="actions">
-        <button class="icon-button" id="sound-button" type="button" aria-label="Toggle sound" aria-pressed="true">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M5 10v4h3l4 3V7L8 10H5zM16 9c1.5 1.6 1.5 4.4 0 6M18.5 6.5c3.3 3.1 3.3 7.9 0 11"/>
-            <path class="sound-slash" d="M4 4l16 16"/>
-          </svg>
-        </button>
+        <label>
+          <span class="sr-only">Color theme</span>
+          <select class="theme-select" id="theme-select" aria-label="Color theme">
+            <option value="auto">Auto</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </label>
         <button class="icon-button" id="reset-button" type="button" aria-label="Reset current exercise" title="Reset">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M4 4v6h6M5.5 15a7 7 0 1 0 .6-7.5L4 10"/>
@@ -41,9 +42,9 @@
       <div class="stage-meta">
         <div>
           <span id="stage-glyph" class="stage-glyph" aria-hidden="true">{}</span>
-          <span id="stage-label" class="sr-only">Go exercise</span>
+          <span id="stage-label" class="sr-only">Programming exercise</span>
         </div>
-        <span id="counter" class="counter">1 · 3</span>
+        <span id="counter" class="counter">0%</span>
       </div>
       <code id="grammar-rule" class="grammar-rule"></code>
 
@@ -51,7 +52,7 @@
         <pre id="code" aria-live="polite"></pre>
         <textarea
           id="capture"
-          aria-label="Type the shown Go code"
+          aria-label="Type the shown code"
           autocapitalize="off"
           autocomplete="off"
           autocorrect="off"
@@ -60,22 +61,29 @@
       </div>
       <div class="answers" id="answers" hidden></div>
 
-      <div class="stats" aria-label="Current result">
-        <span><b id="speed">0</b><small aria-label="speed or attempts">↯</small></span>
-        <span><b id="accuracy">100</b><small aria-label="accuracy percent">%</small></span>
-        <span><b id="streak">0</b><small aria-label="streak">◆</small></span>
+      <div class="telemetry" aria-label="Practice timing and result">
+        <span class="metric"><b id="exercise-time">0:00</b><small>exercise</small></span>
+        <span class="metric"><b id="session-time">0:00</b><small>session</small></span>
+        <span class="metric"><b id="remaining-time">~0:00</b><small>stage left</small></span>
+        <span class="metric"><b id="speed">0</b><small id="speed-label">tries</small></span>
+        <span class="metric"><b id="accuracy">100</b><small>accuracy %</small></span>
+        <span class="metric"><b id="streak">0</b><small>streak</small></span>
       </div>
     </section>
 
     <div class="hint" aria-hidden="true">
-      <kbd>tab</kbd><span>⇥</span>
-      <kbd>esc</kbd><span>↺</span>
+      <kbd>tab</kbd><span>-&gt;</span>
+      <kbd>esc</kbd><span>reset</span>
     </div>
   </main>
 
   <dialog id="course-map" class="course-map">
     <form method="dialog" class="map-head">
-      <span class="mark"><span>go</span><span id="map-track" aria-hidden="true">{}</span></span>
+      <div class="map-title">
+        <strong id="map-language">Go</strong>
+        <span id="map-mode">Syntax</span>
+        <select class="language-select" id="language-select" aria-label="Language course" hidden></select>
+      </div>
       <button class="icon-button" aria-label="Close course map" value="close">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg>
       </button>

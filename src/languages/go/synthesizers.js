@@ -1,6 +1,6 @@
 import { GrammarExpander } from "./grammar-expander.js";
 import { formatGoTokens } from "./grammar-expander.js";
-import { Random } from "./random.js";
+import { Random } from "../../core/random.js";
 
 function uniqueOptions(answer, candidates, random, count = 3) {
   const values = [...new Set(candidates.map(String).filter((value) => value !== String(answer)))];

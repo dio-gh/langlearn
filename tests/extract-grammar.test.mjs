@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { extractSpec, parseGrammar, tokenize } from "../tools/extract-grammar.mjs";
+import { extractSpec, parseGrammar, tokenize } from "../tools/go/extract-grammar.mjs";
 
 test("tokenizes literals, options, repeats, ranges, and prose", () => {
   const tokens = tokenize('A = "a" … "z" [ B ] { C } | /* any rune */ .');

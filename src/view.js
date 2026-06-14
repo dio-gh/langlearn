@@ -1,3 +1,5 @@
+import { formatDuration } from "./core/timing.js";
+
 function element(tag, className, text) {
   const node = document.createElement(tag);
   if (className) node.className = className;
@@ -16,15 +18,21 @@ export class View {
     this.glyph = document.querySelector("#stage-glyph");
     this.rule = document.querySelector("#grammar-rule");
     this.speed = document.querySelector("#speed");
+    this.speedLabel = document.querySelector("#speed-label");
     this.accuracy = document.querySelector("#accuracy");
     this.streak = document.querySelector("#streak");
+    this.exerciseTime = document.querySelector("#exercise-time");
+    this.sessionTime = document.querySelector("#session-time");
+    this.remainingTime = document.querySelector("#remaining-time");
     this.progress = document.querySelector("#progress");
-    this.trackSwitch = document.querySelector("#track-switch");
-    this.languageVersion = document.querySelector("#language-version");
+    this.modeSwitch = document.querySelector("#mode-switch");
+    this.courseBadge = document.querySelector("#course-badge");
+    this.languageSelect = document.querySelector("#language-select");
+    this.themeSelect = document.querySelector("#theme-select");
     this.map = document.querySelector("#course-map");
     this.mapGrid = document.querySelector("#map-grid");
-    this.mapTrack = document.querySelector("#map-track");
-    this.soundButton = document.querySelector("#sound-button");
+    this.mapLanguage = document.querySelector("#map-language");
+    this.mapMode = document.querySelector("#map-mode");
     this.live = document.querySelector("#live-status");
   }
 
@@ -32,26 +40,44 @@ export class View {
     this.capture.focus({ preventScroll: true });
   }
 
-  setLanguageVersion(version) {
-    this.languageVersion.textContent = version;
-    this.languageVersion.title = `Generated and validated with ${version}`;
-    this.languageVersion.setAttribute("aria-label", `Go language version ${version}`);
+  setLanguage(language) {
+    document.title = `langlearn | ${language.label}`;
+    this.courseBadge.textContent = `${language.label} ${language.displayVersion}`;
+    this.courseBadge.title = `${language.label} course validated with ${language.version}`;
+    this.courseBadge.setAttribute(
+      "aria-label",
+      `${language.label} course, language version ${language.version}`,
+    );
+    this.mapLanguage.textContent = language.label;
+    document.querySelector("#stage-label").textContent = `${language.label} exercise`;
+    this.capture.setAttribute("aria-label", `Type the shown ${language.label} code`);
   }
 
-  render({ course, grammar, exercise, session }) {
+  renderLanguages(languages, currentId) {
+    this.languageSelect.replaceChildren(...languages.map((language) => {
+      const option = element("option", "", `${language.label} ${language.displayVersion}`);
+      option.value = language.id;
+      option.selected = language.id === currentId;
+      return option;
+    }));
+    this.languageSelect.hidden = languages.length < 2;
+  }
+
+  render({ course, formatStage, exercise, session, timing }) {
     const stageIndex = course.position.stage;
     const status = course.status(stageIndex);
     this.practice.dataset.kind = exercise.kind;
     this.practice.classList.toggle("active", Boolean(session.startedAt || session.selected));
     this.practice.classList.toggle("complete", session.complete);
     const reviewing = course.position.stage < course.position.frontier;
-    this.glyph.textContent = `${reviewing ? "~ " : ""}${course.stage.glyph}`;
+    this.glyph.textContent = `${reviewing ? "Review " : ""}${course.stage.glyph}`;
     this.counter.textContent = `${Math.round(status.ratio * 100)}%`;
-    this.rule.textContent = grammar.format(course.stage.production);
+    this.rule.textContent = formatStage(course.stage);
     this.streak.textContent = course.store.state.streak;
-    this.renderTracks(course);
+    this.renderModes(course);
     this.renderProgress(course);
-    this.renderMap(course, grammar);
+    this.renderMap(course, formatStage);
+    this.renderTiming(timing);
 
     if (exercise.kind === "typing") {
       this.renderTyping(exercise, session);
@@ -60,13 +86,14 @@ export class View {
     }
   }
 
-  renderTracks(course) {
-    this.trackSwitch.replaceChildren(...course.tracks.map((track) => {
-      const button = element("button", "track-button", track.glyph);
+  renderModes(course) {
+    this.modeSwitch.replaceChildren(...course.tracks.map((track) => {
+      const button = element("button", "mode-button", track.label);
       button.type = "button";
       button.dataset.track = track.id;
+      button.title = track.description;
       button.classList.toggle("current", track.id === course.track.id);
-      button.setAttribute("aria-label", `${track.id} track`);
+      button.setAttribute("aria-label", `${track.label}: ${track.description}`);
       button.setAttribute("aria-pressed", String(track.id === course.track.id));
       return button;
     }));
@@ -99,6 +126,7 @@ export class View {
     this.answers.hidden = true;
     const stats = session.stats;
     this.speed.textContent = stats.wpm;
+    this.speedLabel.textContent = "wpm";
     this.accuracy.textContent = stats.accuracy;
   }
 
@@ -106,7 +134,7 @@ export class View {
     const codeOptions = !exercise.code || exercise.options.some((option) => option.includes("\n"));
     this.practice.classList.toggle("code-options", codeOptions);
     const fragment = document.createDocumentFragment();
-    for (const character of exercise.code || "✓ ?") {
+    for (const character of exercise.code || "?") {
       const span = element("span", character === "?" ? "blank" : "", character);
       fragment.append(span);
     }
@@ -125,11 +153,20 @@ export class View {
       return button;
     }));
     this.speed.textContent = session.attempts;
+    this.speedLabel.textContent = "tries";
     this.accuracy.textContent = session.attempts ? Math.round(100 / session.attempts) : 100;
   }
 
-  renderMap(course, grammar) {
-    this.mapTrack.textContent = course.track.glyph;
+  renderTiming(timing) {
+    this.exerciseTime.textContent = formatDuration(timing.exerciseMs);
+    this.sessionTime.textContent = formatDuration(timing.sessionMs);
+    this.remainingTime.textContent = timing.remainingProbes
+      ? `~${formatDuration(timing.remainingMs)}`
+      : "done";
+  }
+
+  renderMap(course, formatStage) {
+    this.mapMode.textContent = course.track.label;
     this.mapGrid.replaceChildren(...course.track.stages.map((stage, index) => {
       const button = element("button", "map-node");
       button.type = "button";
@@ -144,15 +181,10 @@ export class View {
       meter.style.setProperty("--fill", `${course.mastery(index) * 100}%`);
       button.classList.toggle("mastered", course.status(index).mastered);
       button.classList.toggle("due", course.status(index).due);
-      const rule = element("small", "", grammar.format(stage.production));
+      const rule = element("small", "", formatStage(stage));
       button.append(code, meter, rule);
       return button;
     }));
-  }
-
-  setSound(enabled) {
-    this.soundButton.classList.toggle("off", !enabled);
-    this.soundButton.setAttribute("aria-pressed", String(enabled));
   }
 
   announce(value) {

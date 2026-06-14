@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-$Root = Split-Path -Parent $PSScriptRoot
+$Root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $Research = Join-Path $Root ".research"
 $Manifest = Get-Content (Join-Path $PSScriptRoot "sources.json") -Raw | ConvertFrom-Json
 

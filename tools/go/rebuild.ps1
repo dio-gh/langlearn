@@ -6,7 +6,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$Root = Split-Path -Parent $PSScriptRoot
+$Root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $Research = Join-Path $Root ".research"
 $Archive = Join-Path $Research "go1.26.4.windows-amd64.zip"
 $ToolchainBase = Join-Path $Research "go1.26.4-full"
@@ -39,7 +39,7 @@ else {
 }
 $Drive = "R:"
 if (Test-Path "$Drive\") {
-    throw "$Drive is already in use; edit tools/rebuild.ps1 to select another temporary drive."
+    throw "$Drive is already in use; edit tools/go/rebuild.ps1 to select another temporary drive."
 }
 
 Push-Location $Root
@@ -51,11 +51,11 @@ try {
     $env:CORPUS_SIZE = [string]$CorpusSize
     $env:CANDIDATE_LIMIT = [string]$CandidateLimit
 
-    & $Node "tools\extract-grammar.mjs"
+    & $Node "tools\go\extract-grammar.mjs"
     if ($LASTEXITCODE -ne 0) { throw "Grammar extraction failed." }
-    & $Node "tools\extract-stdlib.mjs"
+    & $Node "tools\go\extract-stdlib.mjs"
     if ($LASTEXITCODE -ne 0) { throw "Standard-library extraction failed." }
-    & $Node "tools\build-corpus.mjs"
+    & $Node "tools\go\build-corpus.mjs"
     if ($LASTEXITCODE -ne 0) { throw "Corpus validation failed." }
     $Tests = Get-ChildItem -LiteralPath (Join-Path $Root "tests") -Filter "*.test.mjs" |
         ForEach-Object { $_.FullName }

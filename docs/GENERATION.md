@@ -1,62 +1,55 @@
-# Generation And Guarantees
+# Go Course Generation And Guarantees
 
 The browser never chooses from authored source-code cards. It selects a numeric
-candidate from `validated.generated.js` and deterministically reconstructs the
-exercise using the checked-in grammar, models, and API catalog.
+candidate from `src/languages/go/data/validated.generated.js` and
+deterministically reconstructs the exercise from checked-in grammar, models,
+and API data.
+
+All Go-specific builders live under `tools/go/`.
 
 ## Syntax Track
 
-1. `extract-grammar.mjs` parses every modified-EBNF block in the stable Go
+1. `tools/go/extract-grammar.mjs` parses modified-EBNF blocks in the stable Go
    specification into an AST.
 2. `GrammarExpander` starts at the stage's named production.
 3. Generated lexical terminals provide identifiers and literals.
-4. Named derivation profiles bound recursion and prefer pedagogically smaller
-   grammar paths. They constrain productions; they contain no Go snippets.
-5. The generated fragment is placed in a context appropriate to its production.
+4. Derivation profiles bound recursion and prefer smaller grammar paths without
+   containing Go snippets.
+5. The fragment is placed in a context appropriate to its production.
 6. The Go 1.26.4 parser must accept the complete source.
 
-Guarantee: the displayed fragment is syntactically accepted in its recorded
-context by the pinned parser. It is not claimed to be type-correct in isolation;
-syntax productions may legally refer to names and types supplied by surrounding
-programs.
+The displayed fragment is syntactically accepted in its recorded context. It is
+not necessarily type-correct in isolation.
 
-## Meaning Track
+## Behavior Track
 
 Each stage is a parameterized program family. A seed chooses values, operators,
-container contents, branches, and loop bounds. The JavaScript model computes an
-answer and emits a Go expression. During corpus construction, all expressions
-are assembled into a Go program, executed by Go 1.26.4, and compared with the
-model answers.
-
-Guarantee: every published answer matched actual Go execution at build time.
+container contents, branches, and loop bounds. JavaScript computes an answer
+and emits Go code. Corpus construction executes all cases with Go 1.26.4 and
+compares runtime output with the model.
 
 ## Library Track
 
-`extract-stdlib/main.go` uses `go/types` to extract exported function
-signatures from the pinned standard library. The synthesizer chooses a function,
-generates arguments from its parameter types, and draws distractor names from
-other extracted packages. Every option is substituted into the same source and
-checked with `go/types`.
-
-Guarantee: exactly one displayed option type-checked in the generated context.
+`tools/go/extract-stdlib/main.go` uses `go/types` to extract exported function
+signatures. The synthesizer generates arguments and distractors. Every option
+is substituted into the same source and checked with `go/types`; exactly one
+must type-check.
 
 ## Bounded Seed Space
 
-Arbitrary infinite generation and exhaustive compiler validation are
-incompatible. The site therefore uses a bounded, generated seed space: 48 seeds
-per stage. This is dynamic reconstruction, not a handwritten exercise bank, and
-it makes the correctness claim auditable.
+The site publishes 48 generated seeds per stage. This bounded corpus makes the
+correctness claim replayable while preserving dynamic reconstruction. It is not
+a handwritten exercise bank.
 
-The validation manifest includes SHA-256 hashes of every input involved in
-generation. Tests fail if code or data changes without rebuilding the corpus.
+The manifest hashes every generation input. Tests fail if generators,
+curriculum, grammar data, library data, or validation tools change without a
+corpus rebuild.
 
-## Adversarial Syntax Probes
+On Windows, the build disables Go's optional module index and reads package
+sources directly. This avoids stale-index failures when `GOROOT` is mapped away
+from a non-ASCII profile path; parser, execution, and type-check semantics are
+unchanged. Go build caches and compiler temporary files are kept under the
+ignored `.research/` tree rather than machine-global profile directories.
 
-Two thirds of every syntax stage's published seeds are contrast probes. The
-generator mutates a parser-valid derivation by deleting or corrupting generated
-delimiters, separators, operators, keywords, or identifiers. Corpus construction
-keeps a candidate only when exactly one of the three displayed forms is accepted
-by the Go 1.26.4 parser.
-
-This separates recognition evidence from exact-copying performance and gives
-the learner model a concrete misconception class when a near-miss is selected.
+Two thirds of each syntax stage are adversarial contrast probes. A candidate is
+published only when the real parser accepts exactly one displayed form.

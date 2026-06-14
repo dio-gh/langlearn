@@ -42,7 +42,9 @@ export class TypingSession {
 
   get evidence() {
     const stats = this.stats;
-    const durationMs = (this.finishedAt || performance.now()) - this.createdAt;
+    const durationMs = this.startedAt
+      ? (this.finishedAt || performance.now()) - this.startedAt
+      : 0;
     return {
       firstTry: this.mistakes === 0,
       mistakes: this.mistakes,
@@ -50,6 +52,10 @@ export class TypingSession {
       durationMs,
       impulsive: false,
     };
+  }
+
+  get elapsedMs() {
+    return (this.finishedAt || performance.now()) - this.createdAt;
   }
 }
 
@@ -59,6 +65,7 @@ export class ChoiceSession {
     this.selected = null;
     this.attempts = 0;
     this.complete = false;
+    this.finishedAt = 0;
     this.createdAt = performance.now();
     this.selections = [];
   }
@@ -68,11 +75,12 @@ export class ChoiceSession {
     this.attempts += 1;
     this.selections.push(value);
     this.complete = value === this.answer;
+    if (this.complete) this.finishedAt = performance.now();
     return this.complete;
   }
 
   get evidence() {
-    const durationMs = performance.now() - this.createdAt;
+    const durationMs = (this.finishedAt || performance.now()) - this.createdAt;
     return {
       firstTry: this.attempts === 1,
       mistakes: Math.max(0, this.attempts - 1),
@@ -80,6 +88,10 @@ export class ChoiceSession {
       durationMs,
       impulsive: durationMs < 350,
     };
+  }
+
+  get elapsedMs() {
+    return (this.finishedAt || performance.now()) - this.createdAt;
   }
 }
 

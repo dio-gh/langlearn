@@ -33,21 +33,29 @@ test("runtime code does not make network requests", () => {
     "src/view.js",
     "src/core/course.js",
     "src/core/exercises.js",
-    "src/core/feedback.js",
     "src/core/grammar.js",
-    "src/core/grammar-expander.js",
+    "src/core/languages.js",
     "src/core/learner.js",
     "src/core/random.js",
     "src/core/sessions.js",
     "src/core/store.js",
-    "src/core/synthesizers.js",
-    "src/data/curriculum.js",
+    "src/core/theme.js",
+    "src/core/timing.js",
+    "src/languages/catalog.js",
+    "src/languages/go/course.js",
+    "src/languages/go/curriculum.js",
+    "src/languages/go/grammar-expander.js",
+    "src/languages/go/migration.js",
+    "src/languages/go/synthesizers.js",
   ];
   const runtime = files.map((file) => readFileSync(resolve(root, file), "utf8")).join("\n");
 
   assert.doesNotMatch(runtime, /\bfetch\s*\(/);
   assert.doesNotMatch(runtime, /\bXMLHttpRequest\b/);
   assert.doesNotMatch(runtime, /\bWebSocket\b/);
+  assert.doesNotMatch(runtime, /\bAudioContext\b/);
+  assert.doesNotMatch(runtime, /\bvibrate\s*\(/);
+  assert.doesNotMatch(html, /sound|mute/i);
 
   for (const file of files) {
     const source = readFileSync(resolve(root, file), "utf8");

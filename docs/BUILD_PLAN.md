@@ -1,110 +1,81 @@
-# Build Plan
+# Tick-Tock Build Record
 
-## Pass 1: Feature tick
+Odd passes add or test product behavior. Even passes consolidate the result
+into load-bearing architecture.
 
-Build the smallest complete practice loop:
+## Iteration 1
 
-- exact typing capture
-- per-character correct/error feedback
-- WPM, accuracy, streak, and completion
-- linear stages and client-side persistence
-- minimal course map
+### Tick: Practice Loop
 
-The prototype intentionally kept curriculum and UI state together so the
-interaction could be judged before abstractions hardened around it.
+- exact typing and per-character feedback
+- WPM, accuracy, streak, progress, and client-side persistence
+- compact course map
 
-## Pass 2: Architecture tock
+### Tock: Generated Core
 
-Replace the prototype data path with reusable pieces:
+- extracted specification EBNF
+- deterministic track/stage/candidate seeds
+- separated grammar, exercise, course, session, storage, and view state
+- versioned save migration
 
-- extract the stable specification EBNF into a generated grammar AST
-- validate every curriculum stage against a named production
-- make generation deterministic by track, stage, and attempt
-- separate grammar, exercise, course, session, storage, feedback, and view state
-- migrate prototype saves into a versioned store
+## Iteration 2
 
-These pieces are load-bearing: all three tracks use the same factory, course,
-store, and view.
+### Tick: Generated Course Breadth
 
-## Pass 3: Feature tick
+- production-linked syntax construction
+- generated behavior program families
+- standard-library completion probes
 
-Extend beyond syntax without embedding a compiler:
+### Tock: Compiler-Backed Publication
 
-- **`{}` syntax:** production-linked exact typing
-- **`⇒` meaning:** predict observable values and ordering
-- **`.` library:** choose the standard-library selector that completes code
+- numeric seed manifests accepted by the pinned Go 1.26.4 toolchain
+- parser, execution, and type-check validation
+- input SHA-256 binding and complete corpus replay
+- reproducible toolchain download and checksum verification
 
-This pass used provisional authored examples to judge the interaction. The
-second iteration replaced them with generated program families and extracted
-API signatures, with the Go toolchain as the acceptance oracle.
+## Iteration 3
 
-## Pass 4: Architecture tock
+### Tick: Adversarial Evidence
 
-Harden the static artifact:
+- valid-versus-near-miss syntax discrimination
+- generated misconception classes
+- plausible behavior distractors
+- review state and mastery confidence
 
-- pin source revisions and stable language version
-- ship fonts and licenses locally
-- replay generated drills with the Go parser, runtime, and type checker
-- unit-test extraction, progression, sessions, and deterministic generation
-- retain a zero-build GitHub Pages deployment path
+### Tock: Falsifiable Mastery
 
-## Second Iteration
+- reusable evidence ledger
+- independent mastery gates
+- misconception-targeted candidate scheduling
+- immediate mastery revocation after contradictory evidence
+- tests preventing copying, repetition, and guess-cycling from unlocking stages
 
-### Feature tick
+## Iteration 4
 
-- replace source-code cards with formal EBNF expansion
-- add generated semantic program families
-- extract standard-library signatures with `go/types`
+### Tick: Usability And Timing
 
-### Architecture tock
+- lighter dark palette plus a high-contrast light palette
+- system theme detection with persistent manual override
+- explicit Syntax, Behavior, and Library controls
+- removal of all sound, vibration, and mute UI
+- compact desktop proportions
+- exercise timer, session timer, and adaptive stage estimate
 
-- publish only numeric seeds accepted by the pinned Go 1.26.4 toolchain
-- bind the manifest to generator-input SHA-256 hashes
-- make parser, execution, and type-check validation load-bearing
-- add derivation profiles to reduce complexity without embedding drill text
+### Tock: Language-Neutral Product
 
-### Feature tick
+- renamed the product surface to `langlearn`
+- introduced a validated language descriptor registry
+- namespaced course and learner persistence by language
+- isolated the Go runtime under `src/languages/go/`
+- isolated the Go extraction/validation pipeline under `tools/go/`
+- added legacy Go save migrations at the Go package boundary
+- added architecture tests that reject Go coupling in the generic core
+- added token-level WCAG contrast tests and accessibility documentation
 
-- expand every stage to 48 generated and validated exercises
-- preserve three tracks through the same factory and progression engine
+## Future Ticks
 
-### Architecture tock
-
-- add a reproducible toolchain download and checksum workflow
-- replay every published syntax seed in tests
-- assert that curriculum and validation data contain no authored exercise text
-
-## Later Experiments
-
-- spaced repetition weighted by error location and production dependency
-- compile/run exercises through a locally shipped WebAssembly evaluator
-- semantic mutation drills: change one token to reach a shown output
+- a second language course to exercise the descriptor contract
+- semantic mutation probes: change one token to reach a shown result
+- locally shipped WebAssembly compiler/run sandboxes
 - standard-library mini-project chains with a tiny virtual filesystem
 - keyboard-layout-aware punctuation warmups
-
-## Third Iteration
-
-### Feature Tick
-
-- generate parser-verified valid-versus-near-miss syntax contrasts
-- attach misconception classes to every wrong choice
-- record misses, corrections, latency, seed diversity, and facet coverage
-
-### Architecture Tock
-
-- replace completion counters with a reusable evidence ledger
-- make mastery the minimum of several independent evidence requirements
-- add adaptive candidate selection and scheduled prerequisite review
-- migrate old progress as exposure only, never as proof of mastery
-
-### Feature Tick
-
-- add plausible semantic distractors for common wrong models
-- display review state and mastery confidence without instructional prose
-- weight the syntax corpus two-to-one toward adversarial discrimination
-
-### Architecture Tock
-
-- make contradictory evidence revoke mastery immediately
-- test that copying, repetition, and guess-cycling cannot unlock stages
-- document evidence thresholds, misconception targeting, and epistemic limits

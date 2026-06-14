@@ -16,6 +16,8 @@ function emptySkill() {
     misconceptions: {},
     recent: [],
     impulsive: 0,
+    durationMsTotal: 0,
+    durationSamples: 0,
   };
 }
 
@@ -58,18 +60,18 @@ export class LearnerModel {
     this.store = store;
   }
 
-  key(trackId, stageId) {
-    return `${trackId}:${stageId}`;
+  key(languageId, trackId, stageId) {
+    return `${languageId}:${trackId}:${stageId}`;
   }
 
-  skill(trackId, stageId) {
-    return this.store.state.learner.skills[this.key(trackId, stageId)] ?? emptySkill();
+  skill(languageId, trackId, stageId) {
+    return this.store.state.learner.skills[this.key(languageId, trackId, stageId)] ?? emptySkill();
   }
 
-  recordMiss(trackId, stage, exercise, selected) {
+  recordMiss(languageId, trackId, stage, exercise, selected) {
     const diagnostic = exercise.diagnostics?.[selected] ?? `${stage.mode}:unknown`;
     this.store.update((state) => {
-      const record = state.learner.skills[this.key(trackId, stage.id)] ??= emptySkill();
+      const record = state.learner.skills[this.key(languageId, trackId, stage.id)] ??= emptySkill();
       record.attempts += 1;
       record.failures += 1;
       record.score = clamp(record.score - 2.25, -12, 20);
@@ -81,11 +83,11 @@ export class LearnerModel {
     });
   }
 
-  recordCompletion(trackId, stage, exercise, session) {
+  recordCompletion(languageId, trackId, stage, exercise, session) {
     this.store.update((state) => {
       state.learner.round += 1;
       const round = state.learner.round;
-      const record = state.learner.skills[this.key(trackId, stage.id)] ??= emptySkill();
+      const record = state.learner.skills[this.key(languageId, trackId, stage.id)] ??= emptySkill();
       const evidence = session.evidence;
       const clean = evidence.firstTry && !evidence.impulsive;
       const strong = exercise.kind === "choice" && clean;
@@ -100,6 +102,10 @@ export class LearnerModel {
       record.recentSeeds = record.recentSeeds.slice(-seedLimit);
       if (strong) record.strong += 1;
       if (evidence.impulsive) record.impulsive += 1;
+      if (evidence.durationMs > 0) {
+        record.durationMsTotal += evidence.durationMs;
+        record.durationSamples += 1;
+      }
 
       let delta = 0;
       if (strong) delta = 1.6;
@@ -128,9 +134,9 @@ export class LearnerModel {
     });
   }
 
-  recordAbandon(trackId, stage, exercise) {
+  recordAbandon(languageId, trackId, stage, exercise) {
     this.store.update((state) => {
-      const record = state.learner.skills[this.key(trackId, stage.id)] ??= emptySkill();
+      const record = state.learner.skills[this.key(languageId, trackId, stage.id)] ??= emptySkill();
       record.attempts += 1;
       record.failures += 1;
       record.score = clamp(record.score - 0.75, -12, 20);
@@ -141,8 +147,8 @@ export class LearnerModel {
     });
   }
 
-  status(trackId, stage) {
-    const record = this.skill(trackId, stage.id);
+  status(languageId, trackId, stage) {
+    const record = this.skill(languageId, trackId, stage.id);
     const policy = policyFor(stage);
     const distinct = Object.keys(record.seeds).length;
     const span = record.firstRound === null ? 0 : (record.lastRound ?? record.firstRound) - record.firstRound;
@@ -168,8 +174,8 @@ export class LearnerModel {
     };
   }
 
-  weakestFacet(trackId, stageId) {
-    const record = this.skill(trackId, stageId);
+  weakestFacet(languageId, trackId, stageId) {
+    const record = this.skill(languageId, trackId, stageId);
     return Object.entries(record.misconceptions)
       .sort((left, right) => {
         const leftDebt = left[1].fail - left[1].clean;

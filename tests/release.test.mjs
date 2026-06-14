@@ -7,7 +7,7 @@ import {
 } from "node:fs";
 import { extname, join, relative, resolve } from "node:path";
 import test from "node:test";
-import { validationMetadata } from "../src/data/validated.generated.js";
+import { validationMetadata } from "../src/languages/go/data/validated.generated.js";
 
 const root = resolve(import.meta.dirname, "..");
 const textExtensions = new Set([
@@ -38,6 +38,7 @@ test("repository root is a GitHub Pages artifact", () => {
     "index.html",
     "styles.css",
     "src/app.js",
+    "src/languages/go/course.js",
     "assets/fonts/Go-Mono.ttf",
   ]) {
     assert.equal(existsSync(resolve(root, path)), true, path);
@@ -51,7 +52,7 @@ test("visible language version matches the validation oracle", () => {
   const expected = validationMetadata.toolchain.match(/\bgo\d+\.\d+(?:\.\d+)?\b/)?.[0];
   assert.equal(expected, "go1.26.4");
   const html = readFileSync(resolve(root, "index.html"), "utf8");
-  assert.match(html, new RegExp(`id="language-version"[\\s\\S]*?>${expected}</span>`));
+  assert.match(html, /id="course-badge"[\s\S]*?>Go 1\.26\.4<\/span>/);
 });
 
 test("release text contains no common secrets or local user paths", () => {

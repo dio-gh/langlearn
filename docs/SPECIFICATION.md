@@ -1,12 +1,26 @@
 # Product Specification
 
-## Purpose
+## Product Boundary
 
-go{} dojo is a static, dependency-free practice environment for acquiring Go
-syntax, execution models, and standard-library recognition through generated
-interaction rather than explanatory lessons.
+`langlearn` is a static, dependency-free practice environment for acquiring
+programming-language knowledge through generated interaction rather than
+explanatory lessons.
 
-The teaching priority is falsification:
+The application shell is language-neutral. An installed language course owns:
+
+- identity and visible language/toolchain version
+- tracks and production-linked stages
+- deterministic exercise synthesis
+- generated validation data
+- course-specific build tools and legacy save migrations
+
+The shell owns evidence, adaptive scheduling, sessions, timing, themes,
+persistence, rendering, and course selection. Go is the initial course, not the
+product identity.
+
+## Teaching Priority
+
+The primary goal is falsification:
 
 1. expose an incorrect expectation
 2. gather evidence that the expectation has been repaired
@@ -14,7 +28,7 @@ The teaching priority is falsification:
 
 The product does not equate completion, repetition, or copying with mastery.
 
-## Release Baseline
+## Go Release Baseline
 
 - Language specification: Go 1.26
 - Validation toolchain: Go 1.26.4
@@ -23,147 +37,128 @@ The product does not equate completion, repetition, or copying with mastery.
 - Runtime: static HTML, CSS, and JavaScript with no network requests
 - Persistence: browser `localStorage` only
 
-The on-site version badge is read from the generated validation metadata. A
-release test prevents the HTML fallback and generated metadata from drifting.
+The Go version is visible in the application header and comes from generated
+validation metadata. Release tests prevent the HTML fallback and oracle
+metadata from drifting.
 
 ## Knowledge Probes
 
-A knowledge probe is a generated interaction chosen to test a particular claim
-about the learner's model. Probe type is a primary product axis.
+A knowledge probe is a generated interaction chosen to test a claim about the
+learner's model. Probe type is a primary product axis.
 
-### Construction Probes
+### Construction
 
-The learner reproduces a parser-valid generated fragment exactly. These probes
-exercise token order, punctuation, and physical familiarity. A clean result is
-useful evidence, but construction alone cannot establish mastery because the
-fragment is visible.
+The learner reproduces a parser-valid generated fragment exactly. This tests
+token order, punctuation, and physical familiarity. Clean construction is
+evidence, but cannot establish mastery alone because the fragment is visible.
 
-### Discrimination Probes
+### Discrimination
 
 The learner selects the sole parser-valid form among a generated derivation and
-two generated near-misses. Mutations target delimiters, separators, operators,
-keywords, and identifiers.
+generated near-misses. Mutations target delimiters, separators, operators,
+keywords, and identifiers. Two thirds of the Go syntax corpus use this stronger
+probe shape.
 
-These are the strongest syntax probes because they can invalidate a concrete
-expectation. Two thirds of each syntax corpus are discrimination probes.
+### Prediction
 
-### Prediction Probes
+The learner predicts the observable result of generated code. Wrong options
+encode plausible execution models such as branch inversion, off-by-one
+iteration, one-based indexing, FIFO `defer`, lost closure capture, or reversed
+channel receive order.
 
-The learner predicts the observable result of a generated Go expression or
-program. Wrong options encode plausible models such as branch inversion,
-off-by-one iteration, one-based indexing, FIFO `defer`, lost closure capture,
-or reversed channel receive order.
+### API Completion
 
-The build executes every published program with Go 1.26.4 and compares its
-result with the JavaScript model.
+The learner selects an exported library function that makes a generated call
+type-check. For Go, signatures come from `go/types`, not an authored card set.
 
-### API Completion Probes
+### Retention
 
-The learner selects an exported standard-library function that makes a
-generated call type-check. Function signatures come from `go/types`, not an
-authored API card set. Every displayed option is tested in the same context and
-exactly one must type-check.
+Retention is a scheduling mode. Mastered material becomes due after later work,
+and contradictory evidence immediately reopens a stage.
 
-### Retention Probes
+## Evidence And Scheduling
 
-Retention is a scheduling mode rather than a separate exercise shape. Mastered
-material becomes due after later work, and the scheduler revisits weak or old
-stages. A contradiction immediately reopens the stage.
-
-## Evidence Model
-
-Evidence is recorded per track and stage:
+Evidence is namespaced by language, track, and stage:
 
 - distinct validated seeds
-- strong first-try probe successes
+- strong first-try successes
 - clean and failed facets
 - misconception failures and repairs
 - recent outcomes
 - evidence score and temporal span
-- impulsive responses, corrections, and abandonment
+- impulsive responses, corrections, abandonment, and completion duration
 
-Mastery is the minimum across independent requirements, not an average. Excess
-performance on one dimension cannot compensate for no evidence on another.
-Exact thresholds and revocation behavior are specified in
-`docs/LEARNING_MODEL.md`.
+Mastery is the minimum across independent requirements. Candidate selection
+favors unseen seeds, unresolved misconception debt, uncovered facets,
+adversarial probes, and candidates outside the recent window.
 
-## Adaptive Scheduling
+## Timing
 
-Candidate selection favors:
+The interface displays:
 
-1. unseen validated seeds
-2. probes matching unresolved misconception debt
-3. facets without clean evidence
-4. adversarial choice probes
-5. candidates outside the recent-seed window
+- elapsed time for the current exercise
+- elapsed time for the current browser session
+- estimated time remaining for the current stage
 
-Course progression interleaves the current frontier with due and weak prior
-stages. The bounded corpus makes every published claim replayable; scheduling
-and reconstruction remain dynamic in the browser.
+The remaining estimate multiplies the learner's observed average completion
+duration for that stage by the largest unresolved mastery requirement. Before
+enough samples exist, conservative per-probe defaults are used. It is an
+adaptive estimate, not a deadline or guaranteed completion time; mistakes and
+newly exposed evidence deficits can increase it.
+
+## Language Contract
+
+Each course descriptor supplies an `id`, label, version, default track, track
+metadata, migrations, and a runtime factory. The runtime factory supplies a
+shared exercise factory and stage formatter.
+
+The generic shell must not import language implementations directly. It reads
+the language catalog, resolves the active descriptor, and stores progress under
+`courses[languageId]`. Learner records use
+`languageId:trackId:stageId` keys.
+
+The Go runtime and build pipeline are contained under:
+
+- `src/languages/go/`
+- `tools/go/`
+
+Adding another language should require a new course package and one catalog
+entry, not edits to course progression, learner evidence, session handling,
+theme logic, timing, or persistence.
 
 ## Correctness Contract
 
-No exercise source, answer, or option list is stored in the curriculum or seed
-manifest.
+No exercise source, answer, or option list is stored in curriculum or seed
+manifests.
 
-- Syntax acceptance uses the Go 1.26.4 parser.
-- Meaning answers use actual Go 1.26.4 execution.
-- Library answers use Go 1.26.4 type checking.
+- Go syntax acceptance uses the Go 1.26.4 parser.
+- Go behavior answers use actual Go 1.26.4 execution.
+- Go library answers use Go 1.26.4 type checking.
 - The manifest stores numeric seeds and hashes every generation input.
 - Tests regenerate and replay the complete published corpus.
 
-The guarantee is bounded to the generated contexts. Syntax fragments are not
-claimed to type-check in isolation, and behavioral evidence is not proof of a
-learner's private mental state.
-
-## Architecture
-
-The runtime is separated into load-bearing modules:
-
-- grammar catalog and bounded grammar expansion
-- track-specific synthesizers
-- validated-seed exercise reconstruction
-- learner evidence and adaptive selection
-- course progression and review scheduling
-- typing/choice sessions
-- versioned client-side storage
-- DOM rendering and feedback
-
-All tracks share the exercise factory, course, learner, persistence, and view
-layers. Generated data is checked in so production hosting requires no build
-toolchain.
+The guarantee is bounded to generated contexts. Behavioral evidence is robust
+evidence of performance, not proof of a private mental state.
 
 ## Interaction And Accessibility
 
-The visible interface minimizes instructional prose. Track glyphs, generated
-code, correctness color, progress, and repetition carry the interaction.
-English remains in assistive labels and repository documentation.
+The visible interface minimizes instructional prose while keeping navigation
+explicit. Track controls use words rather than unexplained glyphs. English
+remains in compact labels, assistive names, and repository documentation.
 
-Keyboard operation, visible focus, semantic buttons, live status, and local
-fonts are retained. Sound is optional and generated locally.
+The interface provides automatic, light, and dark themes; visible keyboard
+focus; semantic controls; non-color correctness cues; local fonts; and WCAG 2.2
+AA contrast targets. It has no sound or vibration behavior. See
+`docs/ACCESSIBILITY.md`.
 
 ## Privacy And Security
 
-The production runtime:
-
-- sends no requests
-- loads no third-party scripts, styles, fonts, or analytics
-- stores only practice state and settings in `localStorage`
-- contains no credentials or user-specific paths
-
-Research clones and downloaded toolchains live under ignored `.research/` and
-are never part of the published site.
+The production runtime sends no requests, loads no third-party assets or
+analytics, and stores only practice state and settings in `localStorage`.
+Research clones and toolchains live under ignored `.research/`.
 
 ## Non-Goals
 
-This release does not attempt to teach:
-
-- complete program design
-- concurrency safety or performance
-- package discovery beyond the selected standard-library set
-- debugging workflows
-- idiomatic API composition
-- proof of unaided understanding
-
-Those areas require richer project, compiler, and semantic environments than a
-small static probe surface.
+The current release does not teach complete program design, debugging
+workflows, concurrency safety, performance, package discovery, or proof of
+unaided understanding. Those require richer project and compiler environments.

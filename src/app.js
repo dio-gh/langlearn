@@ -1,38 +1,51 @@
 import { Course } from "./core/course.js";
-import { ExerciseFactory } from "./core/exercises.js";
-import { Feedback } from "./core/feedback.js";
-import { GrammarCatalog } from "./core/grammar.js";
+import { LanguageRegistry } from "./core/languages.js";
 import { LearnerModel } from "./core/learner.js";
 import { createSession } from "./core/sessions.js";
 import { ProgressStore } from "./core/store.js";
-import { SynthesizerRegistry } from "./core/synthesizers.js";
-import { tracks } from "./data/curriculum.js";
-import { grammarMetadata, grammarProductions } from "./data/go-grammar.generated.js";
-import { standardLibrary } from "./data/stdlib.generated.js";
-import { validatedSeeds, validationMetadata } from "./data/validated.generated.js";
+import { ThemeController } from "./core/theme.js";
+import { PracticeClock } from "./core/timing.js";
+import { languageCourses } from "./languages/catalog.js";
 import { View } from "./view.js";
-
-function validatedLanguageVersion(toolchain) {
-  return toolchain.match(/\bgo\d+\.\d+(?:\.\d+)?\b/)?.[0] ?? "go?";
-}
 
 class App {
   constructor() {
-    this.grammar = new GrammarCatalog(grammarMetadata, grammarProductions);
-    this.store = new ProgressStore();
+    this.languages = new LanguageRegistry(languageCourses);
+    const fallback = this.languages.defaultLanguage;
+    this.store = new ProgressStore(window.localStorage, "langlearn.v4", {
+      languageId: fallback.id,
+      trackId: fallback.defaultTrack,
+    }, this.languages.languages.flatMap((language) => language.migrations ?? []));
     this.learner = new LearnerModel(this.store);
-    this.registry = new SynthesizerRegistry(this.grammar, standardLibrary);
-    this.factory = new ExerciseFactory(this.grammar, this.registry, validatedSeeds);
-    this.course = new Course(tracks, this.factory, this.store, this.learner);
-    this.feedback = new Feedback(this.store);
     this.view = new View();
-    this.view.setLanguageVersion(validatedLanguageVersion(validationMetadata.toolchain));
+    this.theme = new ThemeController(this.store);
+    this.theme.bind(this.view.themeSelect);
+    this.clock = new PracticeClock();
     this.exercise = null;
     this.session = null;
     this.advanceTimer = 0;
+    this.configureLanguage(this.store.state.activeLanguage);
     this.bind();
     this.load();
-    window.setInterval(() => this.renderStats(), 250);
+    window.setInterval(() => this.renderLive(), 250);
+  }
+
+  configureLanguage(languageId) {
+    this.language = this.languages.resolve(languageId);
+    if (this.store.state.activeLanguage !== this.language.id) {
+      this.store.update((state) => {
+        state.activeLanguage = this.language.id;
+      });
+    }
+    this.runtime = this.language.createRuntime();
+    this.course = new Course(
+      this.language,
+      this.runtime.factory,
+      this.store,
+      this.learner,
+    );
+    this.view.setLanguage(this.language);
+    this.view.renderLanguages(this.languages.languages, this.language.id);
   }
 
   bind() {
@@ -76,23 +89,31 @@ class App {
         this.finish();
       } else {
         this.course.recordMiss(this.exercise, this.session);
-        this.feedback.wrong();
         this.render();
       }
     });
 
-    this.view.trackSwitch.addEventListener("click", (event) => {
+    this.view.modeSwitch.addEventListener("click", (event) => {
       const button = event.target.closest("[data-track]");
       if (!button) return;
-      if (this.session.startedAt || this.session.attempts > 0) this.course.abandon(this.exercise);
+      this.abandonIfStarted();
       this.course.setTrack(button.dataset.track);
+      this.load();
+    });
+
+    this.view.languageSelect.addEventListener("change", () => {
+      this.abandonIfStarted();
+      this.store.update((state) => {
+        state.activeLanguage = this.view.languageSelect.value;
+      });
+      this.configureLanguage(this.view.languageSelect.value);
       this.load();
     });
 
     this.view.mapGrid.addEventListener("click", (event) => {
       const button = event.target.closest("[data-stage]");
       if (!button) return;
-      if (this.session.startedAt || this.session.attempts > 0) this.course.abandon(this.exercise);
+      this.abandonIfStarted();
       if (this.course.selectStage(Number(button.dataset.stage))) {
         this.view.map.close();
         this.load();
@@ -101,10 +122,6 @@ class App {
 
     document.querySelector("#map-button").addEventListener("click", () => this.view.map.showModal());
     document.querySelector("#reset-button").addEventListener("click", () => this.restart());
-    this.view.soundButton.addEventListener("click", () => {
-      this.feedback.toggle();
-      this.view.setSound(this.feedback.enabled);
-    });
 
     document.addEventListener("keydown", (event) => {
       if (
@@ -118,6 +135,12 @@ class App {
     });
   }
 
+  abandonIfStarted() {
+    if (this.session && (this.session.startedAt || this.session.attempts > 0)) {
+      this.course.abandon(this.exercise);
+    }
+  }
+
   load() {
     window.clearTimeout(this.advanceTimer);
     this.exercise = this.course.exercise;
@@ -128,37 +151,44 @@ class App {
   }
 
   restart() {
-    if (this.session && (this.session.startedAt || this.session.attempts > 0)) {
-      this.course.abandon(this.exercise);
-    }
+    this.abandonIfStarted();
     this.load();
   }
 
   finish() {
-    this.feedback.correct();
-    this.view.announce("✓");
+    this.view.announce("Correct");
     this.render();
     this.advanceTimer = window.setTimeout(() => {
       this.course.complete(this.exercise, this.session);
       this.load();
-    }, 720);
+    }, 560);
   }
 
-  renderStats() {
-    if (this.exercise?.kind !== "typing" || !this.session.startedAt || this.session.complete) return;
-    const stats = this.session.stats;
-    this.view.speed.textContent = stats.wpm;
-    this.view.accuracy.textContent = stats.accuracy;
+  timing() {
+    return this.clock.snapshot(
+      this.course.status(this.course.position.stage),
+      this.exercise,
+      this.session,
+    );
+  }
+
+  renderLive() {
+    if (this.exercise?.kind === "typing" && this.session.startedAt && !this.session.complete) {
+      const stats = this.session.stats;
+      this.view.speed.textContent = stats.wpm;
+      this.view.accuracy.textContent = stats.accuracy;
+    }
+    if (this.exercise && this.session) this.view.renderTiming(this.timing());
   }
 
   render() {
     this.view.render({
       course: this.course,
-      grammar: this.grammar,
+      formatStage: this.runtime.formatStage,
       exercise: this.exercise,
       session: this.session,
+      timing: this.timing(),
     });
-    this.view.setSound(this.feedback.enabled);
   }
 }
 

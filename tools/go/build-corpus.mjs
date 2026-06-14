@@ -1,36 +1,48 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { exerciseSeed } from "../src/core/exercises.js";
-import { GrammarCatalog } from "../src/core/grammar.js";
-import { SynthesizerRegistry } from "../src/core/synthesizers.js";
-import { tracks } from "../src/data/curriculum.js";
-import { grammarMetadata, grammarProductions } from "../src/data/go-grammar.generated.js";
-import { standardLibrary } from "../src/data/stdlib.generated.js";
+import { exerciseSeed } from "../../src/core/exercises.js";
+import { GrammarCatalog } from "../../src/core/grammar.js";
+import { tracks } from "../../src/languages/go/curriculum.js";
+import { grammarMetadata, grammarProductions } from "../../src/languages/go/data/grammar.generated.js";
+import { standardLibrary } from "../../src/languages/go/data/stdlib.generated.js";
+import { SynthesizerRegistry } from "../../src/languages/go/synthesizers.js";
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const goRoot = process.env.GOROOT126 ?? resolve(root, ".research/go1.26.4-full/go");
 const go = process.env.GO126 ?? resolve(goRoot, "bin/go.exe");
+const goCache = process.env.GOCACHE ?? resolve(root, ".research/go-build-cache");
+const goTemp = process.env.GOTMPDIR ?? resolve(root, ".research/go-tmp");
+mkdirSync(goCache, { recursive: true });
+mkdirSync(goTemp, { recursive: true });
+const goEnv = {
+  ...process.env,
+  GOROOT: goRoot,
+  GOTOOLCHAIN: "local",
+  GODEBUG: [process.env.GODEBUG, "goindex=0"].filter(Boolean).join(","),
+  GOCACHE: goCache,
+  GOTMPDIR: goTemp,
+};
 const nodeLimit = Number(process.env.CORPUS_SIZE ?? 48);
 const candidateLimit = Number(process.env.CANDIDATE_LIMIT ?? 900);
 const grammar = new GrammarCatalog(grammarMetadata, grammarProductions);
 const registry = new SynthesizerRegistry(grammar, standardLibrary);
 const inputFiles = [
   "src/core/exercises.js",
-  "src/core/grammar-expander.js",
   "src/core/random.js",
-  "src/core/synthesizers.js",
-  "src/data/curriculum.js",
-  "src/data/go-grammar.generated.js",
-  "src/data/stdlib.generated.js",
-  "tools/build-corpus.mjs",
-  "tools/extract-grammar.mjs",
-  "tools/extract-stdlib.mjs",
-  "tools/extract-stdlib/main.go",
-  "tools/validate/main.go",
+  "src/languages/go/curriculum.js",
+  "src/languages/go/grammar-expander.js",
+  "src/languages/go/synthesizers.js",
+  "src/languages/go/data/grammar.generated.js",
+  "src/languages/go/data/stdlib.generated.js",
+  "tools/go/build-corpus.mjs",
+  "tools/go/extract-grammar.mjs",
+  "tools/go/extract-stdlib.mjs",
+  "tools/go/extract-stdlib/main.go",
+  "tools/go/validate/main.go",
 ];
 
 function hashFile(path) {
@@ -39,23 +51,23 @@ function hashFile(path) {
 
 function wrapSyntax(code, context) {
   if (context === "package" || context === "file") return `${code}\n`;
-  if (context === "declaration") return `package dojo\n\n${code}\n`;
-  if (context === "statement") return `package dojo\n\nfunc practice() {\n${code}\n}\n`;
-  if (context === "expression") return `package dojo\n\nvar _ = ${code}\n`;
-  if (context === "type") return `package dojo\n\ntype Generated ${code}\n`;
-  if (context === "range") return `package dojo\n\nfunc practice() {\nfor ${code} {}\n}\n`;
-  if (context === "typeParameters") return `package dojo\n\nfunc generated${code}() {}\n`;
+  if (context === "declaration") return `package practice\n\n${code}\n`;
+  if (context === "statement") return `package practice\n\nfunc practice() {\n${code}\n}\n`;
+  if (context === "expression") return `package practice\n\nvar _ = ${code}\n`;
+  if (context === "type") return `package practice\n\ntype Generated ${code}\n`;
+  if (context === "range") return `package practice\n\nfunc practice() {\nfor ${code} {}\n}\n`;
+  if (context === "typeParameters") return `package practice\n\nfunc generated${code}() {}\n`;
   throw new RangeError(`Unknown syntax context ${context}`);
 }
 
 function runValidator(requests) {
   if (!requests.length) return [];
-  const output = execFileSync(go, ["run", "./tools/validate/main.go"], {
+  const output = execFileSync(go, ["run", "./tools/go/validate/main.go"], {
     cwd: root,
     encoding: "utf8",
     input: JSON.stringify(requests),
     maxBuffer: 64 * 1024 * 1024,
-    env: { ...process.env, GOROOT: goRoot, GOTOOLCHAIN: "local" },
+    env: goEnv,
   });
   return JSON.parse(output);
 }
@@ -66,7 +78,7 @@ function buildSyntax(track) {
     const requests = [];
     const exercises = new Map();
     for (let candidate = 0; candidate < candidateLimit; candidate += 1) {
-      const exercise = registry.generate(stage, exerciseSeed(track, stage, candidate));
+      const exercise = registry.generate(stage, exerciseSeed("go", track, stage, candidate));
       exercises.set(candidate, exercise);
       if (exercise.kind === "typing") {
         requests.push({
@@ -119,7 +131,7 @@ function buildMeaning(track) {
   for (const stage of track.stages) {
     result[stage.id] = [];
     for (let candidate = 0; candidate < nodeLimit; candidate += 1) {
-      const seed = exerciseSeed(track, stage, candidate);
+      const seed = exerciseSeed("go", track, stage, candidate);
       const exercise = registry.generate(stage, seed);
       result[stage.id].push(candidate);
       cases.push({ stage: stage.id, candidate, exercise });
@@ -141,13 +153,13 @@ ${cases.map(({ exercise }) => `\t\tfmt.Sprint(${exercise.expression}),`).join("\
 \tfmt.Print(string(data))
 }
 `;
-  const directory = mkdtempSync(resolve(tmpdir(), "go-dojo-"));
+  const directory = mkdtempSync(resolve(tmpdir(), "langlearn-go-"));
   const file = resolve(directory, "main.go");
   try {
     writeFileSync(file, source, "utf8");
     const output = execFileSync(go, ["run", file], {
       encoding: "utf8",
-      env: { ...process.env, GOROOT: goRoot, GOTOOLCHAIN: "local" },
+      env: goEnv,
     });
     const actual = JSON.parse(output);
     cases.forEach(({ stage, candidate, exercise }, index) => {
@@ -169,7 +181,7 @@ function buildLibrary(track) {
     const candidates = [];
     for (let candidate = 0; candidate < candidateLimit && candidates.length < nodeLimit * 5; candidate += 1) {
       try {
-        const exercise = registry.generate(stage, exerciseSeed(track, stage, candidate));
+        const exercise = registry.generate(stage, exerciseSeed("go", track, stage, candidate));
         candidates.push({ candidate, exercise });
       } catch {
         // Unsupported signatures are deliberately outside the generated subset.
@@ -179,7 +191,7 @@ function buildLibrary(track) {
     const requests = candidates.flatMap(({ candidate, exercise }) => exercise.options.map((option) => ({
       id: `${candidate}:${option}`,
       mode: "typecheck",
-      source: `package dojo
+      source: `package practice
 
 import ${JSON.stringify(exercise.packagePath)}
 
@@ -212,7 +224,7 @@ for (const track of tracks) {
 
 const toolVersion = execFileSync(go, ["version"], {
   encoding: "utf8",
-  env: { ...process.env, GOROOT: goRoot, GOTOOLCHAIN: "local" },
+  env: goEnv,
 }).trim();
 const metadata = {
   toolchain: toolVersion,
@@ -221,12 +233,12 @@ const metadata = {
   inputs: Object.fromEntries(inputFiles.map((path) => [path, hashFile(path)])),
 };
 writeFileSync(
-  resolve(root, "src/data/validated.generated.js"),
-  `// Generated by tools/build-corpus.mjs. Contains seeds, not exercise text.\n`
+  resolve(root, "src/languages/go/data/validated.generated.js"),
+  `// Generated Go corpus seeds, not exercise text. Do not edit.\n`
     + `export const validationMetadata = Object.freeze(${JSON.stringify(metadata, null, 2)});\n\n`
     + `export const validatedSeeds = Object.freeze(${JSON.stringify(validatedSeeds, null, 2)});\n`,
   "utf8",
 );
-console.log("wrote src/data/validated.generated.js");
+console.log("wrote src/languages/go/data/validated.generated.js");
 
 export { wrapSyntax };

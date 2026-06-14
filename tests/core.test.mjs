@@ -3,10 +3,14 @@ import test from "node:test";
 import { Course } from "../src/core/course.js";
 import { ExerciseFactory } from "../src/core/exercises.js";
 import { GrammarCatalog } from "../src/core/grammar.js";
+import { LanguageRegistry } from "../src/core/languages.js";
 import { LearnerModel } from "../src/core/learner.js";
 import { Random } from "../src/core/random.js";
 import { ChoiceSession, TypingSession } from "../src/core/sessions.js";
 import { ProgressStore } from "../src/core/store.js";
+import { ThemeController } from "../src/core/theme.js";
+import { formatDuration, PracticeClock, remainingProbeCount } from "../src/core/timing.js";
+import { migrateGoProgress } from "../src/languages/go/migration.js";
 
 class MemoryStorage {
   constructor() {
@@ -52,10 +56,10 @@ test("exercise factory validates production and generator names", () => {
     has: (mode) => mode === "syntax",
     generate: () => ({ kind: "typing", code: "package p", context: "file" }),
   };
-  const factory = new ExerciseFactory(grammar, registry, { x: { root: [2] } });
+  const factory = new ExerciseFactory("test", grammar, registry, { x: { root: [2] } });
   const tracks = [{ id: "x", stages: [{ id: "root", production: "Root", mode: "syntax" }] }];
   assert.doesNotThrow(() => factory.validate(tracks));
-  assert.equal(factory.create(tracks[0], tracks[0].stages[0], 2).seed, "x:root:2");
+  assert.equal(factory.create(tracks[0], tracks[0].stages[0], 2).seed, "test:x:root:2");
 });
 
 function cleanChoiceSession() {
@@ -83,9 +87,9 @@ test("learner evidence rejects completion-count mastery", () => {
   };
 
   for (let index = 0; index < 12; index += 1) {
-    learner.recordCompletion("meaning", stage, exercise, cleanChoiceSession());
+    learner.recordCompletion("test", "meaning", stage, exercise, cleanChoiceSession());
   }
-  const status = learner.status("meaning", stage);
+  const status = learner.status("test", "meaning", stage);
   assert.equal(status.mastered, false);
   assert.equal(status.ratios.distinct < 1, true);
 });
@@ -100,8 +104,8 @@ test("a miss lowers belief and records its misconception", () => {
     facets: ["branch"],
     diagnostics: { wrong: "branch-inversion" },
   };
-  learner.recordMiss("meaning", stage, exercise, "wrong");
-  const record = learner.skill("meaning", "probe");
+  learner.recordMiss("test", "meaning", stage, exercise, "wrong");
+  const record = learner.skill("test", "meaning", "probe");
   assert.equal(record.score < 0, true);
   assert.equal(record.misconceptions["branch-inversion"].fail, 1);
   assert.deepEqual(record.recent, [false]);
@@ -112,22 +116,22 @@ test("a mastered skill is immediately reopened by contradictory evidence", () =>
   const learner = new LearnerModel(store);
   const stage = { id: "probe", mode: "meaning" };
   for (let index = 0; index < 8; index += 1) {
-    learner.recordCompletion("meaning", stage, {
+    learner.recordCompletion("test", "meaning", stage, {
       id: `probe:${index}`,
       kind: "choice",
       facets: ["meaning", `variant:${index % 2}`],
       diagnostics: { wrong: "inversion" },
     }, cleanChoiceSession());
   }
-  assert.equal(learner.status("meaning", stage).mastered, true);
+  assert.equal(learner.status("test", "meaning", stage).mastered, true);
 
-  learner.recordMiss("meaning", stage, {
+  learner.recordMiss("test", "meaning", stage, {
     id: "probe:next",
     kind: "choice",
     facets: ["meaning"],
     diagnostics: { wrong: "inversion" },
   }, "wrong");
-  assert.equal(learner.status("meaning", stage).mastered, false);
+  assert.equal(learner.status("test", "meaning", stage).mastered, false);
 });
 
 test("a repeated guess-and-correct strategy does not satisfy mastery", () => {
@@ -141,8 +145,8 @@ test("a repeated guess-and-correct strategy does not satisfy mastery", () => {
       facets: ["meaning", `variant:${index % 2}`],
       diagnostics: { wrong: "guess" },
     };
-    learner.recordMiss("meaning", stage, exercise, "wrong");
-    learner.recordCompletion("meaning", stage, exercise, {
+    learner.recordMiss("test", "meaning", stage, exercise, "wrong");
+    learner.recordCompletion("test", "meaning", stage, exercise, {
       evidence: {
         firstTry: false,
         mistakes: 1,
@@ -152,7 +156,7 @@ test("a repeated guess-and-correct strategy does not satisfy mastery", () => {
       },
     });
   }
-  const status = learner.status("meaning", stage);
+  const status = learner.status("test", "meaning", stage);
   assert.equal(status.mastered, false);
   assert.equal(status.ratios.strong, 0);
   assert.equal(status.record.score < 0, true);
@@ -163,7 +167,7 @@ test("typing alone is deliberately insufficient evidence", () => {
   const learner = new LearnerModel(store);
   const stage = { id: "syntax", mode: "syntax" };
   for (let index = 0; index < 14; index += 1) {
-    learner.recordCompletion("syntax", stage, {
+    learner.recordCompletion("test", "syntax", stage, {
       id: `syntax:${index}`,
       kind: "typing",
       facets: ["construction"],
@@ -177,7 +181,7 @@ test("typing alone is deliberately insufficient evidence", () => {
       },
     });
   }
-  const status = learner.status("syntax", stage);
+  const status = learner.status("test", "syntax", stage);
   assert.equal(status.mastered, false);
   assert.equal(status.ratios.strong, 0);
 });
@@ -198,7 +202,7 @@ test("candidate scheduling targets unresolved misconception debt", () => {
       };
     },
   };
-  const factory = new ExerciseFactory(grammar, registry, { meaning: { probe: [0, 1] } });
+  const factory = new ExerciseFactory("test", grammar, registry, { meaning: { probe: [0, 1] } });
   const track = { id: "meaning" };
   const stage = { id: "probe", production: "Root", mode: "meaning" };
   const exercise = factory.choose(track, stage, 0, {
@@ -218,7 +222,7 @@ test("course unlocks only after diverse strong retained evidence", () => {
     A: { kind: "empty" },
     B: { kind: "empty" },
   });
-  const factory = new ExerciseFactory(grammar, {
+  const factory = new ExerciseFactory("test", grammar, {
     has: () => true,
     generate: (stage) => ({ kind: "typing", code: stage.id, context: "statement" }),
   }, { syntax: { a: [0], b: [0] } });
@@ -231,7 +235,8 @@ test("course unlocks only after diverse strong retained evidence", () => {
   }];
   const store = new ProgressStore(new MemoryStorage(), "test");
   const learner = new LearnerModel(store);
-  const course = new Course(tracks, factory, store, learner);
+  const language = { id: "test", label: "Test", defaultTrack: "syntax", tracks };
+  const course = new Course(language, factory, store, learner);
 
   assert.equal(course.isUnlocked(1), false);
   for (let index = 0; index < 8; index += 1) {
@@ -269,8 +274,125 @@ test("v2 completion counters migrate as exposure, not mastery", () => {
     positions: { syntax: { stage: 2, attempt: 4 } },
     mastery: { "syntax:0": 3, "syntax:1": 3 },
   }));
-  const store = new ProgressStore(storage, "go-dojo.v3");
+  const store = new ProgressStore(
+    storage,
+    "langlearn.v4",
+    { languageId: "go", trackId: "syntax" },
+    [migrateGoProgress],
+  );
   const learner = new LearnerModel(store);
-  assert.equal(store.state.version, 3);
-  assert.equal(learner.status("syntax", { id: "package", mode: "syntax" }).mastered, false);
+  assert.equal(store.state.version, 4);
+  assert.equal(
+    learner.status("go", "syntax", { id: "package", mode: "syntax" }).mastered,
+    false,
+  );
+});
+
+test("v3 Go saves migrate into language-namespaced progress", () => {
+  const storage = new MemoryStorage();
+  storage.setItem("go-dojo.v3", JSON.stringify({
+    version: 3,
+    activeTrack: "meaning",
+    positions: { meaning: { stage: 2, frontier: 2, attempt: 4 } },
+    learner: {
+      round: 3,
+      skills: {
+        "meaning:values": {
+          attempts: 2,
+          completions: 1,
+          seeds: { "values:0": 1 },
+        },
+      },
+    },
+  }));
+  const store = new ProgressStore(
+    storage,
+    "langlearn.v4",
+    { languageId: "go", trackId: "syntax" },
+    [migrateGoProgress],
+  );
+  assert.equal(store.state.activeLanguage, "go");
+  assert.equal(store.state.courses.go.activeTrack, "meaning");
+  assert.equal(store.state.courses.go.positions.meaning.stage, 2);
+  assert.equal(store.state.learner.skills["go:meaning:values"].completions, 1);
+});
+
+test("language registry validates and resolves course descriptors", () => {
+  const language = {
+    id: "test",
+    label: "Test",
+    version: "test1",
+    defaultTrack: "syntax",
+    tracks: [{ id: "syntax", stages: [] }],
+    createRuntime() {},
+  };
+  const registry = new LanguageRegistry([language]);
+  assert.equal(registry.resolve("test"), language);
+  assert.equal(registry.resolve("missing"), language);
+});
+
+test("theme controller supports automatic and manual themes", () => {
+  const store = new ProgressStore(
+    new MemoryStorage(),
+    "test",
+    { languageId: "test", trackId: "syntax" },
+  );
+  const root = { dataset: {}, style: {} };
+  const media = { matches: true, addEventListener() {} };
+  const meta = { content: "" };
+  const theme = new ThemeController(store, root, media, meta);
+  assert.equal(theme.resolved, "dark");
+  assert.equal(root.dataset.theme, undefined);
+  theme.set("light");
+  assert.equal(root.dataset.theme, "light");
+  assert.equal(meta.content, "#f4f2ec");
+});
+
+test("migrated progress is immediately written under the current key", () => {
+  const storage = new MemoryStorage();
+  storage.setItem("go-dojo.v3", JSON.stringify({
+    version: 3,
+    activeTrack: "syntax",
+    positions: {},
+  }));
+  new ProgressStore(
+    storage,
+    "langlearn.v4",
+    { languageId: "go", trackId: "syntax" },
+    [migrateGoProgress],
+  );
+  assert.equal(JSON.parse(storage.getItem("langlearn.v4")).version, 4);
+});
+
+test("timing model estimates remaining probe time", () => {
+  const status = {
+    mastered: false,
+    policy: {
+      distinct: 3,
+      strong: 2,
+      score: 3,
+      span: 2,
+      cleanRecent: 2,
+      facets: 1,
+    },
+    record: {
+      seeds: { a: 1 },
+      strong: 1,
+      score: 1.8,
+      firstRound: 1,
+      lastRound: 1,
+      recent: [true],
+      facets: {},
+      durationMsTotal: 40_000,
+      durationSamples: 2,
+    },
+  };
+  assert.equal(remainingProbeCount(status), 2);
+  let now = 10_000;
+  const clock = new PracticeClock(() => now);
+  now = 15_000;
+  const snapshot = clock.snapshot(status, { kind: "choice" }, { elapsedMs: 3_000 });
+  assert.equal(snapshot.sessionMs, 5_000);
+  assert.equal(snapshot.remainingMs, 40_000);
+  assert.equal(formatDuration(snapshot.remainingMs), "0:40");
 });

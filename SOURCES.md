@@ -1,4 +1,4 @@
-# Sources
+# Sources For The Go Course
 
 Research snapshots are cloned under `.research/` and excluded from the
 deployable site.

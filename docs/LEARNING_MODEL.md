@@ -1,6 +1,6 @@
 # Learning Evidence Model
 
-The dojo treats mastery as a falsifiable claim. Completion is not evidence by
+`langlearn` treats mastery as a falsifiable claim. Completion is not evidence by
 itself, and a contradiction can reopen a previously mastered stage.
 
 ## Evidence Strength

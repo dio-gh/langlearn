@@ -45,7 +45,7 @@ export class GrammarCatalog {
   }
 
   get(name) {
-    if (!this.has(name)) throw new RangeError(`Unknown Go production: ${name}`);
+    if (!this.has(name)) throw new RangeError(`Unknown grammar production: ${name}`);
     return this.productions[name];
   }
 

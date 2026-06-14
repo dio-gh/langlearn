@@ -1,13 +1,16 @@
-# go{} dojo
+# langlearn
 
-Static Go 1.26 practice, generated and validated with Go 1.26.4.
+Static, generated programming-language practice. The initial course targets Go
+1.26 and is generated and validated with Go 1.26.4.
 
-A dependency-free, static Go practice surface. Every displayed exercise is
-reconstructed from a deterministic seed; there are no authored drill strings or
-cards in the curriculum.
+`langlearn` is a language-neutral browser shell. Courses provide curriculum,
+generation, validation metadata, versioning, and legacy migrations through a
+small descriptor contract. The Go implementation is isolated under
+`src/languages/go/`; generic progression, evidence, timing, persistence,
+themes, sessions, and rendering live outside it.
 
-The visible interface is intentionally sparse: code, symbols, progress, and
-feedback carry nearly all of the instruction.
+Every displayed exercise is reconstructed from a deterministic numeric seed.
+There are no authored drill strings or cards in the curriculum.
 
 ## Run
 
@@ -17,69 +20,58 @@ Serve the repository root with any static server:
 python -m http.server 8080
 ```
 
-Then open `http://localhost:8080`. GitHub Pages can publish the repository root
-without a build step.
+Open `http://localhost:8080`. GitHub Pages can publish the repository root
+without a website build step.
 
-Progress and settings are stored in `localStorage`. The site makes no network
-requests and ships its own Go Mono font.
+Progress, theme preference, evidence, and timing samples are stored in
+`localStorage`. The site makes no runtime network requests, contains no sound,
+and ships its fonts locally.
 
-## Generation guarantees
+## Go Course Guarantees
 
-- Syntax drills expand a named production in the extracted Go 1.26 EBNF. Only
+- Syntax probes expand a named production in the extracted Go 1.26 EBNF. Only
   seeds accepted by the Go 1.26.4 parser are published.
-- Meaning drills synthesize parameterized programs. Every published answer is
-  compared with the output of the real Go 1.26.4 program.
-- Library drills use signatures extracted from the Go 1.26.4 standard library.
+- Behavior probes synthesize parameterized programs. Every published answer is
+  compared with output from the real Go 1.26.4 runtime.
+- Library probes use signatures extracted from the Go 1.26.4 standard library.
   A seed is published only when exactly one displayed option type-checks.
-- The validation manifest stores numbers only. The browser regenerates the
-  exercise from its seed.
+- The validation manifest stores numeric seeds and input hashes. The browser
+  reconstructs source, answers, options, and diagnostics from those seeds.
 
-The checked-in corpus contains 48 validated seeds for each of 34 stages: 1,632
-generated exercises. See `docs/GENERATION.md` for the trust model and limits.
+The checked-in Go corpus contains 48 validated seeds for each of 34 stages:
+1,632 generated exercises. See `docs/GENERATION.md`.
 
-Mastery is evidence-based rather than completion-based. Distinct seeds,
-first-try adversarial probes, misconception coverage, recent accuracy, and
-retention spacing must all pass; contradictory evidence reopens a stage. See
-`docs/LEARNING_MODEL.md`.
+Mastery is evidence-based. Distinct seeds, first-try adversarial probes,
+misconception coverage, recent accuracy, and retention spacing must all pass;
+contradictory evidence reopens a stage. See `docs/LEARNING_MODEL.md`.
 
-The normative product and architecture description is in
-`docs/SPECIFICATION.md`. It defines construction, discrimination, prediction,
-API completion, and retention knowledge probes.
+## Rebuild The Go Course
 
-## Rebuild
-
-Clone the pinned source snapshots, then regenerate the grammar, API catalog, and
-validated seed manifest. Rebuilding requires PowerShell and Node.js 20 or newer:
+Rebuilding requires PowerShell and Node.js 20 or newer:
 
 ```powershell
-pwsh tools/fetch-sources.ps1
-pwsh tools/rebuild.ps1
+pwsh tools/go/fetch-sources.ps1
+pwsh tools/go/rebuild.ps1
 ```
 
-The rebuild script downloads the official Go 1.26.4 Windows toolchain, verifies
-its SHA-256 checksum, and uses it as the parser/compiler oracle.
+The rebuild downloads the official Go 1.26.4 Windows toolchain, verifies its
+SHA-256 checksum, and uses it as the parser, runtime, and compiler oracle.
 
-## Layout
+## Architecture
 
-- `src/data/go-grammar.generated.js`: generated formal grammar AST
-- `src/data/curriculum.js`: production-linked stage metadata, with no drill text
-- `src/data/validated.generated.js`: compiler-approved numeric seeds
-- `src/data/stdlib.generated.js`: API signatures extracted from Go 1.26.4
-- `src/core/grammar.js`: grammar lookup, traversal, and compact formatting
-- `src/core/grammar-expander.js`: bounded formal-grammar derivation
-- `src/core/synthesizers.js`: generated syntax, meaning, and API models
-- `src/core/exercises.js`: validated-seed selection and reconstruction
-- `src/core/course.js`: mastery, unlocking, and track progression
-- `src/core/sessions.js`: typing and choice interaction state
-- `src/core/store.js`: versioned client-side persistence
-- `tools/extract-grammar.mjs`: zero-dependency EBNF extractor
-- `tools/build-corpus.mjs`: parser, execution, and type-check acceptance build
-- `tests/generated-corpus.test.mjs`: full published-corpus replay
+- `src/core/`: language-neutral course, evidence, session, theme, timing, and
+  persistence contracts
+- `src/languages/catalog.js`: installed course registry
+- `src/languages/go/`: Go descriptor, curriculum, synthesizers, migrations,
+  and generated data
+- `tools/go/`: pinned Go extraction and compiler-validation pipeline
+- `tests/architecture.test.mjs`: enforces the generic-core boundary
+- `tests/generated-corpus.test.mjs`: replays the complete published Go corpus
+- `tests/accessibility.test.mjs`: checks theme contrast and interaction affordances
 
-See `docs/BUILD_PLAN.md` for the tick-tock build record and
-`SOURCES.md` for pinned research inputs. Deployment instructions are in
-`docs/DEPLOYMENT.md`; client-side data handling is documented in
-`docs/PRIVACY.md`.
+The normative design is in `docs/SPECIFICATION.md`. Accessibility decisions are
+recorded in `docs/ACCESSIBILITY.md`, and the tick-tock implementation history is
+in `docs/BUILD_PLAN.md`.
 
 ## License
 

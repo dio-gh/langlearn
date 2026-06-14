@@ -1,4 +1,4 @@
-import { Random } from "./random.js";
+import { Random } from "../../core/random.js";
 
 const reserved = new Set([
   "break", "default", "func", "interface", "select",

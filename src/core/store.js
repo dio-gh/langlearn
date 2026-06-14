@@ -1,11 +1,17 @@
-const currentVersion = 3;
+const currentVersion = 4;
 
-function freshState() {
+export function createProgressState(defaults = {}) {
+  const languageId = defaults.languageId ?? "default";
+  const trackId = defaults.trackId ?? "default";
   return {
     version: currentVersion,
-    activeTrack: "syntax",
-    positions: {},
-    mastery: {},
+    activeLanguage: languageId,
+    courses: {
+      [languageId]: {
+        activeTrack: trackId,
+        positions: {},
+      },
+    },
     learner: {
       round: 0,
       skills: {},
@@ -13,87 +19,102 @@ function freshState() {
     streak: 0,
     total: 0,
     settings: {
-      sound: true,
+      theme: "auto",
     },
   };
 }
 
-function migratePrototype(storage) {
-  try {
-    const old = JSON.parse(storage.getItem("go-dojo.prototype.v1") || "null");
-    if (!old) return null;
-    const state = freshState();
-    state.positions.syntax = { stage: old.stage ?? 0, attempt: old.drill ?? 0 };
-    state.streak = old.streak ?? 0;
-    for (let index = 0; index < (old.stage ?? 0); index += 1) {
-      state.mastery[`syntax:${index}`] = 3;
-    }
-    return state;
-  } catch {
-    return null;
-  }
+export function normalizeSkill(record = {}) {
+  return {
+    attempts: record.attempts ?? 0,
+    completions: record.completions ?? 0,
+    strong: record.strong ?? 0,
+    failures: record.failures ?? 0,
+    score: record.score ?? 0,
+    firstRound: record.firstRound ?? null,
+    lastRound: record.lastRound ?? null,
+    seeds: { ...record.seeds },
+    recentSeeds: [...(record.recentSeeds ?? [])],
+    facets: { ...record.facets },
+    misconceptions: { ...record.misconceptions },
+    recent: [...(record.recent ?? [])],
+    impulsive: record.impulsive ?? 0,
+    durationMsTotal: record.durationMsTotal ?? 0,
+    durationSamples: record.durationSamples ?? 0,
+  };
 }
 
-function migrateV2(storage) {
-  try {
-    const old = JSON.parse(storage.getItem("go-dojo.v2") || "null");
-    if (!old) return null;
-    const state = freshState();
-    state.activeTrack = old.activeTrack ?? state.activeTrack;
-    state.positions = { ...old.positions };
-    state.streak = old.streak ?? 0;
-    state.total = old.total ?? 0;
-    state.settings = { ...state.settings, ...old.settings };
-    for (const [key, value] of Object.entries(old.mastery ?? {})) {
-      state.learner.skills[key] = {
-        attempts: value,
-        completions: value,
-        strong: 0,
-        failures: 0,
-        score: 0,
-        firstRound: null,
-        lastRound: null,
-        seeds: {},
-        recentSeeds: [],
-        facets: {},
-        misconceptions: {},
-        recent: [],
-        impulsive: 0,
-      };
-    }
-    return state;
-  } catch {
-    return null;
+function normalizeCurrent(parsed, defaults) {
+  const base = createProgressState(defaults);
+  const courses = {};
+  for (const [languageId, course] of Object.entries(parsed.courses ?? {})) {
+    courses[languageId] = {
+      activeTrack: course.activeTrack ?? defaults.trackId ?? "default",
+      positions: { ...course.positions },
+    };
   }
+  const skills = Object.fromEntries(
+    Object.entries(parsed.learner?.skills ?? {}).map(([key, value]) => [key, normalizeSkill(value)]),
+  );
+  return {
+    ...base,
+    ...parsed,
+    version: currentVersion,
+    courses: { ...base.courses, ...courses },
+    learner: {
+      round: parsed.learner?.round ?? 0,
+      skills,
+    },
+    settings: {
+      ...base.settings,
+      theme: ["auto", "light", "dark"].includes(parsed.settings?.theme)
+        ? parsed.settings.theme
+        : "auto",
+    },
+  };
 }
 
 export class ProgressStore {
-  constructor(storage = window.localStorage, key = "go-dojo.v3") {
+  constructor(
+    storage = window.localStorage,
+    key = "langlearn.v4",
+    defaults = { languageId: "default", trackId: "default" },
+    migrations = [],
+  ) {
     this.storage = storage;
     this.key = key;
+    this.defaults = defaults;
+    this.migrations = migrations;
     this.state = this.load();
   }
 
   load() {
     try {
       const parsed = JSON.parse(this.storage.getItem(this.key) || "null");
-      if (parsed?.version === currentVersion) {
-        return {
-          ...freshState(),
-          ...parsed,
-          positions: { ...parsed.positions },
-          mastery: { ...parsed.mastery },
-          learner: {
-            round: parsed.learner?.round ?? 0,
-            skills: { ...parsed.learner?.skills },
-          },
-          settings: { ...freshState().settings, ...parsed.settings },
-        };
-      }
+      if (parsed?.version === currentVersion) return normalizeCurrent(parsed, this.defaults);
     } catch {
       // A damaged save should never make the practice surface unusable.
     }
-    return migrateV2(this.storage) ?? migratePrototype(this.storage) ?? freshState();
+    for (const migration of this.migrations) {
+      const migrated = migration(this.storage, this.defaults);
+      if (migrated) {
+        const normalized = normalizeCurrent(migrated, this.defaults);
+        this.storage.setItem(this.key, JSON.stringify(normalized));
+        return normalized;
+      }
+    }
+    return createProgressState(this.defaults);
+  }
+
+  ensureCourse(languageId, defaultTrack) {
+    if (this.state.courses[languageId]) return this.state.courses[languageId];
+    this.update((state) => {
+      state.courses[languageId] = {
+        activeTrack: defaultTrack,
+        positions: {},
+      };
+    });
+    return this.state.courses[languageId];
   }
 
   update(mutator) {
@@ -103,7 +124,7 @@ export class ProgressStore {
   }
 
   reset() {
-    this.state = freshState();
+    this.state = createProgressState(this.defaults);
     this.storage.setItem(this.key, JSON.stringify(this.state));
     return this.state;
   }

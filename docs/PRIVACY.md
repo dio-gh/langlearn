@@ -1,22 +1,23 @@
 # Privacy
 
-go{} dojo has no server-side application component.
+`langlearn` has no server-side application component.
 
 The published site makes no runtime network requests and includes no analytics,
-advertising, remote fonts, third-party scripts, accounts, or telemetry.
+advertising, remote fonts, third-party scripts, accounts, audio, or telemetry
+transmission.
 
 Practice state is stored in the current browser's `localStorage` under a
 versioned application key. It contains:
 
-- current track and stage positions
+- active language, track, and stage positions
 - evidence counts and recent generated seed identifiers
-- misconception/facet counters
+- misconception and facet counters
+- completion-duration samples used for local estimates
 - streak and aggregate completion counts
-- sound preference
+- color-theme preference
 
-This data remains on the device unless the browser, an extension, or the user
-syncs or exports browser storage. Clearing site data resets it.
+This data remains on the device unless browser software or the user syncs or
+exports browser storage. Clearing site data resets it.
 
-The repository does not require API keys or runtime secrets. Build-time research
-clones and downloaded Go toolchains are stored in the ignored `.research/`
-directory.
+The repository requires no API keys or runtime secrets. Build-time research
+clones and downloaded toolchains are stored in ignored `.research/`.

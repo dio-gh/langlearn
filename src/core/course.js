@@ -1,15 +1,25 @@
 export class Course {
-  constructor(tracks, factory, store, learner) {
-    this.tracks = tracks;
+  constructor(language, factory, store, learner) {
+    this.language = language;
+    this.tracks = language.tracks;
     this.factory = factory;
     this.store = store;
     this.learner = learner;
-    this.factory.validate(tracks);
-    if (!this.trackById(this.store.state.activeTrack)) {
-      this.store.update((state) => {
-        state.activeTrack = tracks[0].id;
+    this.factory.validate(this.tracks);
+    const state = this.store.ensureCourse(language.id, language.defaultTrack);
+    if (!this.trackById(state.activeTrack)) {
+      this.store.update((current) => {
+        current.courses[language.id].activeTrack = language.defaultTrack;
       });
     }
+  }
+
+  get languageId() {
+    return this.language.id;
+  }
+
+  get courseState() {
+    return this.store.state.courses[this.languageId];
   }
 
   trackById(id) {
@@ -17,11 +27,12 @@ export class Course {
   }
 
   get track() {
-    return this.trackById(this.store.state.activeTrack);
+    return this.trackById(this.courseState.activeTrack);
   }
 
   get position() {
-    const saved = this.store.state.positions[this.track.id] ?? { stage: 0, frontier: 0, attempt: 0 };
+    const saved = this.courseState.positions[this.track.id]
+      ?? { stage: 0, frontier: 0, attempt: 0 };
     const frontier = Math.max(0, Math.min(saved.frontier ?? saved.stage, this.track.stages.length - 1));
     return {
       stage: Math.max(0, Math.min(saved.stage, frontier)),
@@ -35,12 +46,16 @@ export class Course {
   }
 
   get exercise() {
-    const record = this.learner.skill(this.track.id, this.stage.id);
+    const record = this.learner.skill(this.languageId, this.track.id, this.stage.id);
     return this.factory.choose(this.track, this.stage, this.position.attempt, record);
   }
 
   status(stageIndex) {
-    return this.learner.status(this.track.id, this.track.stages[stageIndex]);
+    return this.learner.status(
+      this.languageId,
+      this.track.id,
+      this.track.stages[stageIndex],
+    );
   }
 
   mastery(stageIndex) {
@@ -55,15 +70,17 @@ export class Course {
   setTrack(id) {
     if (!this.trackById(id)) return;
     this.store.update((state) => {
-      state.activeTrack = id;
-      state.positions[id] ??= { stage: 0, frontier: 0, attempt: 0 };
+      const course = state.courses[this.languageId];
+      course.activeTrack = id;
+      course.positions[id] ??= { stage: 0, frontier: 0, attempt: 0 };
     });
   }
 
   selectStage(stageIndex) {
     if (!this.isUnlocked(stageIndex)) return false;
     this.store.update((state) => {
-      const position = state.positions[this.track.id] ??= { stage: 0, frontier: 0, attempt: 0 };
+      const positions = state.courses[this.languageId].positions;
+      const position = positions[this.track.id] ??= { stage: 0, frontier: 0, attempt: 0 };
       position.stage = stageIndex;
       position.frontier = Math.max(position.frontier ?? 0, stageIndex);
       position.attempt += 1;
@@ -72,20 +89,37 @@ export class Course {
   }
 
   recordMiss(exercise, session) {
-    this.learner.recordMiss(this.track.id, this.stage, exercise, session.selected);
+    this.learner.recordMiss(
+      this.languageId,
+      this.track.id,
+      this.stage,
+      exercise,
+      session.selected,
+    );
   }
 
   abandon(exercise) {
-    this.learner.recordAbandon(this.track.id, this.stage, exercise);
+    this.learner.recordAbandon(this.languageId, this.track.id, this.stage, exercise);
     this.advanceAttempt();
   }
 
   complete(exercise, session) {
     const trackId = this.track.id;
     const stageIndex = this.position.stage;
-    this.learner.recordCompletion(trackId, this.stage, exercise, session);
+    this.learner.recordCompletion(
+      this.languageId,
+      trackId,
+      this.stage,
+      exercise,
+      session,
+    );
     this.store.update((state) => {
-      const position = state.positions[trackId] ??= { stage: stageIndex, frontier: stageIndex, attempt: 0 };
+      const positions = state.courses[this.languageId].positions;
+      const position = positions[trackId] ??= {
+        stage: stageIndex,
+        frontier: stageIndex,
+        attempt: 0,
+      };
       position.attempt += 1;
       if (this.status(stageIndex).mastered && stageIndex < this.track.stages.length - 1) {
         position.frontier = Math.max(position.frontier ?? stageIndex, stageIndex + 1);
@@ -96,7 +130,8 @@ export class Course {
 
   advanceAttempt() {
     this.store.update((state) => {
-      const position = state.positions[this.track.id] ??= { stage: 0, frontier: 0, attempt: 0 };
+      const positions = state.courses[this.languageId].positions;
+      const position = positions[this.track.id] ??= { stage: 0, frontier: 0, attempt: 0 };
       position.attempt += 1;
     });
   }

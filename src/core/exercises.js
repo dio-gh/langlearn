@@ -1,9 +1,10 @@
-export function exerciseSeed(track, stage, candidate) {
-  return `${track.id}:${stage.id}:${candidate}`;
+export function exerciseSeed(languageId, track, stage, candidate) {
+  return `${languageId}:${track.id}:${stage.id}:${candidate}`;
 }
 
 export class ExerciseFactory {
-  constructor(grammar, registry, validatedSeeds) {
+  constructor(languageId, grammar, registry, validatedSeeds) {
+    this.languageId = languageId;
     this.grammar = grammar;
     this.registry = registry;
     this.validatedSeeds = validatedSeeds;
@@ -29,7 +30,7 @@ export class ExerciseFactory {
   create(track, stage, attempt) {
     const candidates = this.validatedSeeds[track.id][stage.id];
     const candidate = candidates[attempt % candidates.length];
-    const seed = exerciseSeed(track, stage, candidate);
+    const seed = exerciseSeed(this.languageId, track, stage, candidate);
     const exercise = this.registry.generate(stage, seed);
     return {
       ...exercise,
@@ -66,7 +67,7 @@ export class ExerciseFactory {
   }
 
   createCandidate(track, stage, candidate) {
-    const seed = exerciseSeed(track, stage, candidate);
+    const seed = exerciseSeed(this.languageId, track, stage, candidate);
     const exercise = this.registry.generate(stage, seed);
     return {
       ...exercise,
