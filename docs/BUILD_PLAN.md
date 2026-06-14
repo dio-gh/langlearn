@@ -89,6 +89,23 @@ into load-bearing architecture.
 - bound the generated vocabulary to the validation manifest
 - added corpus quality and grammar-role regression tests
 
+## Iteration 6
+
+### Tick: Continuous Practice Metrics
+
+- accumulated accuracy across challenge boundaries
+- preserved partial input when a challenge is reset or abandoned
+- made the stage estimate visibly count down during a probe
+- aligned exercise, session, and remaining-time display ticks
+
+### Tock: Shared Metric Sources
+
+- introduced a persisted, language-scoped accuracy ledger
+- defined reusable response counts for typing and choice sessions
+- derived every visible duration from one idle-aware clock snapshot
+- quantized duration display to shared whole-second boundaries
+- added persistence, abandonment, and timer-cadence regression tests
+
 ## Future Ticks
 
 - a second language course to exercise the descriptor contract

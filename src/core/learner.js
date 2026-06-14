@@ -30,6 +30,17 @@ function increment(table, key, field) {
   table[key][field] += 1;
 }
 
+function addPerformance(state, languageId, session) {
+  const sample = session?.performance;
+  if (!sample?.attempts) return;
+  const total = state.learner.performance[languageId] ??= {
+    correct: 0,
+    attempts: 0,
+  };
+  total.correct += sample.correct;
+  total.attempts += sample.attempts;
+}
+
 function policyFor(stage) {
   if (stage.mode === "syntax") {
     return {
@@ -68,6 +79,21 @@ export class LearnerModel {
     return this.store.state.learner.skills[this.key(languageId, trackId, stageId)] ?? emptySkill();
   }
 
+  performance(languageId, session = null) {
+    const stored = this.store.state.learner.performance[languageId] ?? {
+      correct: 0,
+      attempts: 0,
+    };
+    const current = session?.performance ?? { correct: 0, attempts: 0 };
+    const correct = stored.correct + current.correct;
+    const attempts = stored.attempts + current.attempts;
+    return {
+      correct,
+      attempts,
+      accuracy: attempts ? Math.round(correct / attempts * 100) : null,
+    };
+  }
+
   recordMiss(languageId, trackId, stage, exercise, selected) {
     const diagnostic = exercise.diagnostics?.[selected] ?? `${stage.mode}:unknown`;
     this.store.update((state) => {
@@ -93,6 +119,7 @@ export class LearnerModel {
       const strong = exercise.kind === "choice" && clean;
       const typingClean = exercise.kind === "typing" && evidence.accuracy === 100;
 
+      addPerformance(state, languageId, session);
       record.attempts += 1;
       record.completions += 1;
       record.firstRound ??= round;
@@ -134,9 +161,10 @@ export class LearnerModel {
     });
   }
 
-  recordAbandon(languageId, trackId, stage, exercise) {
+  recordAbandon(languageId, trackId, stage, exercise, session) {
     this.store.update((state) => {
       const record = state.learner.skills[this.key(languageId, trackId, stage.id)] ??= emptySkill();
+      addPerformance(state, languageId, session);
       record.attempts += 1;
       record.failures += 1;
       record.score = clamp(record.score - 0.75, -12, 20);

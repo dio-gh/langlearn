@@ -30,12 +30,18 @@ export function remainingProbeCount(status) {
 }
 
 export function formatDuration(milliseconds) {
-  const seconds = Math.max(0, Math.round(milliseconds / 1000));
+  const seconds = Math.max(0, Math.floor(milliseconds / 1000));
   const minutes = Math.floor(seconds / 60);
   const remainder = String(seconds % 60).padStart(2, "0");
   if (minutes < 60) return `${minutes}:${remainder}`;
   const hours = Math.floor(minutes / 60);
   return `${hours}:${String(minutes % 60).padStart(2, "0")}:${remainder}`;
+}
+
+function synchronizedDuration(startedAt, endedAt) {
+  const startSecond = Math.ceil(startedAt / 1000);
+  const endSecond = Math.floor(endedAt / 1000);
+  return Math.max(0, endSecond - startSecond) * 1000;
 }
 
 export class PracticeClock {
@@ -88,16 +94,21 @@ export class PracticeClock {
   }
 
   snapshot(status, exercise, session) {
+    const now = this.now();
     const samples = status.record.durationSamples ?? 0;
     const measured = samples
       ? status.record.durationMsTotal / samples
       : fallbackDuration[exercise.kind] ?? 20_000;
     const average = Math.max(5_000, Math.min(measured, 180_000));
     const probes = remainingProbeCount(status);
+    const exerciseMs = synchronizedDuration(
+      session.createdAt,
+      session.finishedAt ?? now,
+    );
     return {
-      exerciseMs: session.elapsedMs,
-      sessionMs: this.now() - this.startedAt,
-      remainingMs: probes * average,
+      exerciseMs,
+      sessionMs: synchronizedDuration(this.startedAt, now),
+      remainingMs: Math.max(0, probes * average - exerciseMs),
       remainingProbes: probes,
       idle: this.idle,
     };

@@ -40,10 +40,17 @@ export class TypingSession {
     const minutes = this.startedAt !== null
       ? Math.max((end - this.startedAt) / 60000, 1 / 600)
       : 0;
-    const correct = Math.max(0, this.keystrokes - this.mistakes);
+    const { correct, attempts } = this.performance;
     return {
       wpm: minutes ? Math.round(correct / 5 / minutes) : 0,
-      accuracy: this.keystrokes ? Math.round(correct / this.keystrokes * 100) : null,
+      accuracy: attempts ? Math.round(correct / attempts * 100) : null,
+    };
+  }
+
+  get performance() {
+    return {
+      correct: Math.max(0, this.keystrokes - this.mistakes),
+      attempts: this.keystrokes,
     };
   }
 
@@ -88,10 +95,17 @@ export class ChoiceSession {
   }
 
   get stats() {
-    const correct = this.complete ? 1 : 0;
+    const { correct, attempts } = this.performance;
     return {
+      attempts,
+      accuracy: attempts ? Math.round(correct / attempts * 100) : null,
+    };
+  }
+
+  get performance() {
+    return {
+      correct: this.complete ? 1 : 0,
       attempts: this.attempts,
-      accuracy: this.attempts ? Math.round(correct / this.attempts * 100) : null,
     };
   }
 

@@ -68,7 +68,7 @@ export class View {
     this.languageSelect.hidden = languages.length < 2;
   }
 
-  render({ course, formatStage, exercise, session, timing }) {
+  render({ course, formatStage, exercise, session, performance, timing }) {
     const stageIndex = course.position.stage;
     const status = course.status(stageIndex);
     this.practice.dataset.kind = exercise.kind;
@@ -95,7 +95,7 @@ export class View {
     } else {
       this.renderChoice(exercise, session);
     }
-    this.renderPerformance(exercise, session);
+    this.renderPerformance(exercise, session, performance);
   }
 
   renderModes(course) {
@@ -173,7 +173,7 @@ export class View {
     }));
   }
 
-  renderPerformance(exercise, session) {
+  renderPerformance(exercise, session, performance) {
     const stats = session.stats;
     if (exercise.kind === "typing") {
       this.speed.textContent = stats.wpm;
@@ -182,7 +182,10 @@ export class View {
       this.speed.textContent = stats.attempts;
       this.speedLabel.textContent = "tries";
     }
-    this.accuracy.textContent = formatAccuracy(stats.accuracy);
+    this.accuracy.textContent = formatAccuracy(performance.accuracy);
+    this.accuracy.title = performance.attempts
+      ? `${performance.correct} correct of ${performance.attempts} inputs across ${this.courseBadge.textContent} challenges`
+      : "No accuracy evidence yet";
   }
 
   renderTiming(timing) {

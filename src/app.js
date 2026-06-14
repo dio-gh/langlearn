@@ -150,7 +150,11 @@ class App {
 
   abandonIfStarted() {
     if (this.session && (this.session.startedAt !== null || this.session.attempts > 0)) {
-      this.course.abandon(this.exercise);
+      if (this.session.complete) {
+        this.course.complete(this.exercise, this.session);
+      } else {
+        this.course.abandon(this.exercise, this.session);
+      }
     }
   }
 
@@ -185,13 +189,17 @@ class App {
     );
   }
 
+  performance() {
+    return this.learner.performance(this.language.id, this.session);
+  }
+
   renderLive() {
     if (
       this.exercise?.kind === "typing"
       && this.session.startedAt !== null
       && !this.session.complete
     ) {
-      this.view.renderPerformance(this.exercise, this.session);
+      this.view.renderPerformance(this.exercise, this.session, this.performance());
     }
     if (this.exercise && this.session) this.view.renderTiming(this.timing());
   }
@@ -202,6 +210,7 @@ class App {
       formatStage: this.runtime.formatStage,
       exercise: this.exercise,
       session: this.session,
+      performance: this.performance(),
       timing: this.timing(),
     });
   }

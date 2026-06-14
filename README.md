@@ -23,9 +23,9 @@ python -m http.server 8080
 Open `http://localhost:8080`. GitHub Pages can publish the repository root
 without a website build step.
 
-Progress, theme preference, evidence, and timing samples are stored in
-`localStorage`. The site makes no runtime network requests, contains no sound,
-and ships its fonts locally.
+Progress, theme preference, cumulative accuracy, evidence, and timing samples
+are stored in `localStorage`. The site makes no runtime network requests,
+contains no sound, and ships its fonts locally.
 
 ## Go Course Guarantees
 

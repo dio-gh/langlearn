@@ -106,8 +106,14 @@ export class Course {
     );
   }
 
-  abandon(exercise) {
-    this.learner.recordAbandon(this.languageId, this.track.id, this.stage, exercise);
+  abandon(exercise, session) {
+    this.learner.recordAbandon(
+      this.languageId,
+      this.track.id,
+      this.stage,
+      exercise,
+      session,
+    );
     this.advanceAttempt();
   }
 

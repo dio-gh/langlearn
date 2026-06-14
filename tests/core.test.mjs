@@ -274,6 +274,66 @@ test("typing and choice sessions track completion", () => {
   assert.equal(choice.evidence.accuracy, 50);
 });
 
+test("accuracy accumulates across completed, active, and abandoned challenges", () => {
+  const storage = new MemoryStorage();
+  const store = new ProgressStore(
+    storage,
+    "test",
+    { languageId: "go", trackId: "syntax" },
+  );
+  const learner = new LearnerModel(store);
+  const clock = { now: () => 1_000 };
+  const stage = { id: "probe", mode: "syntax" };
+  const exercise = {
+    id: "probe:0",
+    kind: "choice",
+    facets: ["construction"],
+  };
+
+  const choice = new ChoiceSession("right", clock);
+  choice.choose("wrong");
+  choice.choose("right");
+  learner.recordCompletion("go", "syntax", stage, exercise, choice);
+  assert.deepEqual(learner.performance("go"), {
+    correct: 1,
+    attempts: 2,
+    accuracy: 50,
+  });
+
+  const typing = new TypingSession("go", clock);
+  typing.recordInsertion("gx");
+  typing.update("go");
+  assert.deepEqual(learner.performance("go", typing), {
+    correct: 2,
+    attempts: 4,
+    accuracy: 50,
+  });
+  learner.recordCompletion("go", "syntax", stage, {
+    ...exercise,
+    id: "probe:1",
+    kind: "typing",
+  }, typing);
+
+  const abandoned = new ChoiceSession("right", clock);
+  abandoned.choose("wrong");
+  learner.recordAbandon("go", "syntax", stage, exercise, abandoned);
+  assert.deepEqual(learner.performance("go"), {
+    correct: 2,
+    attempts: 5,
+    accuracy: 40,
+  });
+
+  const restored = new ProgressStore(
+    storage,
+    "test",
+    { languageId: "go", trackId: "syntax" },
+  );
+  assert.deepEqual(restored.state.learner.performance.go, {
+    correct: 2,
+    attempts: 5,
+  });
+});
+
 test("v2 completion counters migrate as exposure, not mastery", () => {
   const storage = new MemoryStorage();
   storage.setItem("go-dojo.v2", JSON.stringify({
@@ -398,11 +458,51 @@ test("timing model estimates remaining probe time", () => {
   assert.equal(remainingProbeCount(status), 2);
   let now = 10_000;
   const clock = new PracticeClock(() => now);
+  const choice = new ChoiceSession("right", clock);
   now = 15_000;
-  const snapshot = clock.snapshot(status, { kind: "choice" }, { elapsedMs: 3_000 });
+  const snapshot = clock.snapshot(status, { kind: "choice" }, choice);
   assert.equal(snapshot.sessionMs, 5_000);
-  assert.equal(snapshot.remainingMs, 40_000);
-  assert.equal(formatDuration(snapshot.remainingMs), "0:40");
+  assert.equal(snapshot.exerciseMs, 5_000);
+  assert.equal(snapshot.remainingMs, 35_000);
+  assert.equal(formatDuration(snapshot.remainingMs), "0:35");
+});
+
+test("visible timers advance on the same active-time boundaries", () => {
+  const status = {
+    mastered: false,
+    policy: {
+      distinct: 1,
+      strong: 1,
+      score: 1,
+      span: 1,
+      cleanRecent: 1,
+      facets: 1,
+    },
+    record: {
+      seeds: {},
+      strong: 0,
+      score: 0,
+      firstRound: null,
+      lastRound: null,
+      recent: [],
+      facets: {},
+      durationMsTotal: 0,
+      durationSamples: 0,
+    },
+  };
+  let raw = 250;
+  const clock = new PracticeClock(() => raw);
+  raw = 1_250;
+  const choice = new ChoiceSession("right", clock);
+
+  raw = 2_100;
+  const first = clock.snapshot(status, { kind: "choice" }, choice);
+  raw = 3_100;
+  const second = clock.snapshot(status, { kind: "choice" }, choice);
+
+  assert.equal(second.sessionMs - first.sessionMs, 1_000);
+  assert.equal(second.exerciseMs - first.exerciseMs, 1_000);
+  assert.equal(first.remainingMs - second.remainingMs, 1_000);
 });
 
 test("practice time pauses after inactivity and while hidden", () => {

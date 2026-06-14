@@ -30,8 +30,10 @@ test("font sources are local and present", () => {
 test("counter placeholders do not claim unearned accuracy", () => {
   assert.match(html, /id="accuracy">--<\/b>/);
   const view = readFileSync(resolve(root, "src/view.js"), "utf8");
+  const learner = readFileSync(resolve(root, "src/core/learner.js"), "utf8");
   assert.match(view, /course\.trackProgress/);
-  assert.match(view, /session\.stats/);
+  assert.match(view, /performance\.accuracy/);
+  assert.match(learner, /state\.learner\.performance/);
   assert.doesNotMatch(view, /Math\.round\(100\s*\/\s*session\.attempts\)/);
 });
 
@@ -44,6 +46,7 @@ test("all live duration metrics share idle-aware active time", () => {
   assert.match(app, /this\.clock\.activity\(\)/);
   assert.match(sessions, /this\.clock\.now\(\)/);
   assert.match(timing, /idleThreshold/);
+  assert.match(timing, /synchronizedDuration/);
   assert.match(timing, /idle:\s*this\.idle/);
 });
 

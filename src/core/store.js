@@ -15,6 +15,7 @@ export function createProgressState(defaults = {}) {
     learner: {
       round: 0,
       skills: {},
+      performance: {},
     },
     streak: 0,
     total: 0,
@@ -56,6 +57,15 @@ function normalizeCurrent(parsed, defaults) {
   const skills = Object.fromEntries(
     Object.entries(parsed.learner?.skills ?? {}).map(([key, value]) => [key, normalizeSkill(value)]),
   );
+  const performance = Object.fromEntries(
+    Object.entries(parsed.learner?.performance ?? {}).map(([languageId, value]) => [
+      languageId,
+      {
+        correct: Math.max(0, value.correct ?? 0),
+        attempts: Math.max(0, value.attempts ?? 0),
+      },
+    ]),
+  );
   return {
     ...base,
     ...parsed,
@@ -64,6 +74,7 @@ function normalizeCurrent(parsed, defaults) {
     learner: {
       round: parsed.learner?.round ?? 0,
       skills,
+      performance,
     },
     settings: {
       ...base.settings,
